@@ -37,10 +37,9 @@ Big::Big()
 
 Big::~Big()
 {
-    if(head)
-    {
+    if(head) {
         delete[] head;
-        head = NULL;
+        head = nullptr;
     }
 }
 
@@ -59,8 +58,7 @@ Big::Big(const Big &rhs)
     head = new base[capacity];
     alloc = head + capacity -1;
     tail = head;
-    for (int i = 0; i < length; i++)
-    {
+    for (int i = 0; i < length; i++) {
         head[i] = rhs.head[i];
         tail++;
     }
@@ -437,25 +435,31 @@ Big div(Big &e, Big &c, Big &remainder)
     return q;
 }
 
-void Big::pow(Big &y, Big &mod)
+void Big::pow(Big &degree, Big &modulo)
 {
-    Big z = *this;
-    int n = nlz(y.head[y.getLength() - 1]);
-    n-=2;
-    for(int i = y.getLength() - 1; i >= 0; i--)
-    {
-        while (n >= 0)
-        {
-            z = z * z;
-            z = z % mod;
-            if((y.head[i] >> n) & 1)
-            {
-                z = z * *this;
-                z = z % mod;
+//    Big z{(degree.head[0] & 1)? (*this) : (static_cast<base>(1))};
+    Big q{*this};
+    Big z;
+    if (degree.head[0] & 1) {
+        z = *this;
+    } else {
+        z = static_cast<base>(1);
+    };
+
+    int bits = sizeof(base) * 8;
+
+    auto degreeLen = degree.getLength();
+    int j = 1;
+    for(int i = 0; i < degreeLen; ++i) {
+        for(; j < bits; ++j) {
+            q = q * q;
+            q = q % modulo;
+            if (degree.head[i] & (1 << j)) {
+                z = z * q;
+                z = z % modulo;
             }
-            n--;
         }
-        n = sizeof(base) * 8;
+        j = 0;
     }
     *this = z;
 }
@@ -687,6 +691,8 @@ Big& Big::operator=(int rhs)
 
     tail = head;
     head[0] = rhs;
+
+    return *this;
 }
 
 std::istream &operator>>(std::istream &in, Big &rhs)

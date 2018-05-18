@@ -55,7 +55,7 @@ public:
     Big divBase(base rhs, base &remainder);
     friend Big div(Big &e, Big &c, Big &remainder);
 
-    void pow(Big &y, Big &mod);
+    void pow(Big &degree, Big &modulo);
 
 
     friend std::istream &operator >> (std::istream &in, Big &rhs);
@@ -70,3 +70,5 @@ private:
 };
 
 Big mulByKaratsuba(Big &lhs, Big &rhs);
+Big Degree(Big &x, Big &y, Big &mod);
+

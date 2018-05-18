@@ -13,16 +13,20 @@ using std::endl;
  * генератор простого вход длина в битах
  */
 
-/*
-bool mainTest(int T, int M)
-{
-    Big A, B, C, D;
-    do{
-        int n {1 + rand() % M};
-        int m {1 + rand() % M};
-//        int n,m;
-//        n = m = M;
 
+bool testBig(int count, int sizeRange, bool isFixedSize)
+{
+    cout << "Выполняется тестирование основных операций (+, -, *, /, %, ==, <) класса Big" << endl;
+    Big A, B, C, D, res1, res2, res3;
+    int n, m;
+
+    for(int i = 0; i < count; ++i) {
+        if (isFixedSize) {
+            n = m = sizeRange;
+        } else {
+            n = 1 + rand() % sizeRange;
+            m = 1 + rand() % sizeRange;
+        }
         A.rand(n);
         B.rand(m);
 
@@ -30,31 +34,38 @@ bool mainTest(int T, int M)
         C = A / B;
         D = A % B;
 
-//        std::cout << "A = " << A << std::endl
-//                  << "B = " << B << std::endl
-//                  << "C = " << C << std::endl
-//                  << "D = " << D << std::endl << std::endl;
-        if(T % 5 == 0) {
-            std::cout << T << std::endl;
+        res1 = B * C;
+        res1 = res1 + D;
+        res2 = A - D;
+        res3 = B * C;
+
+        /*
+         * A == B * C + D &&
+         * A - D == B * C &&
+         * D < B
+         */
+        if (!((res1 == A) && (res2 == res3) && (D < B))) {
+            cout << endl;
+            cout << "   Ошибка на тесте #" << i + 1<< endl;
+            cout << "       A:                " << A << std::endl;
+            cout << "       B:                " << B << std::endl;
+            cout << "       C = A / B:        " << C << std::endl;
+            cout << "       D = A % B:        " << D << std::endl;
+            cout << "       res1 = B * C + D: " << res1 << std::endl;
+            cout << "       res2 = A - D:     " << res2<< std::endl;
+            cout << "       res3 = B * C:     " << res2<< std::endl;
+            return false;
         }
-    } while (A == B * C + D &&
-             A - D == B * C &&
-             D < B &&
-             --T);
-    if(T)
-    {
-        std::cout << "-----Error-----" << std::endl
-                  << "A = " << A << std::endl
-                  << "B = " << B << std::endl
-                  << "C = " << C << std::endl
-                  << "D = " << D << std::endl
-                  << "T = " << T << std::endl;
-        return false;
+        if (i % count / 10 == 0) {
+            cout << "   Пройдено тестов: " << i + 1 << endl;
+        }
     }
-    std::cout << "Good" << std::endl;
+    cout << endl;
+    cout << "   Количество тестов: " << count << endl;
+    cout << "   Максимальная длина числа: " << sizeRange << endl;
+    cout << "Тестирование класса Big завершено" << endl;
     return true;
 }
-*/
 
 bool testKaratsuba(int count, int sizeRange, bool isFixedSize)
 {
@@ -86,7 +97,7 @@ bool testKaratsuba(int count, int sizeRange, bool isFixedSize)
 
         if (resBasic != resKaratsuba) {
             cout << endl;
-            cout << "   Error on Test #" << i << endl;
+            cout << "   Ошибка на тесте #" << i + 1 << endl;
             cout << "       num1:      " << num1 << endl;
             cout << "       num2:      " << num2 << endl;
             cout << "       basic:     " << resBasic << endl;
@@ -107,59 +118,63 @@ bool testKaratsuba(int count, int sizeRange, bool isFixedSize)
     return true;
 }
 
+bool testPow(int count, int sizeRange, bool isFixedSize)
+{
+    cout << "Выполняется тестирование pow()" << endl;
+    Big x, y, mod, res;
+    int n, m;
+
+    for(int i = 0; i < count; ++i) {
+        if (isFixedSize) {
+            n = m = sizeRange;
+        } else {
+            n = 1 + rand() % sizeRange;
+            m = 1 + rand() % sizeRange / 10;
+        }
+        m = 2;
+        x.rand(n);
+        y.rand(m);
+        mod.rand(sizeRange);
+
+        res = x;
+
+
+        res.pow(y, mod);
+
+
+
+        if (res != res ) {
+            cout << endl;
+            cout << "   Ошибка на тесте #" << i + 1<< endl;
+            cout << "       x:    " << x << std::endl;
+            cout << "       y:    " << y << std::endl;
+            cout << "       mod:  " << mod << std::endl;
+            cout << "       res1: " << res << std::endl;
+            return false;
+        }
+        if (i % count / 10 == 0) {
+            cout << "   Пройдено тестов: " << i + 1 << endl;
+        }
+    }
+    cout << endl;
+    cout << "   Количество тестов: " << count << endl;
+    cout << "   Максимальная длина числа: " << sizeRange << endl;
+    cout << "Тестирование класса Big завершено" << endl;
+    return true;
+}
 
 int main()
 {
-    /*
-    //test for big number
+//    srand(time(NULL));
 
-//    Big a,b,c,d,result_1, result_2, result_3;
-//    int T = 1000, M =1000;
-//    do{
-//        int n = 1 + rand() % M;
-//        int m = 1 + rand() % M;
-//        a.Rand(n);
-//        b.rand(m);
-//        c = a/b;
-//        d = a%b;
-//        result_1 = b*c;
-//        result_2 = result_1 + d;
-//        result_3 = a - d;
-//        std::cout << T << std::endl;
+    testPow(1000, 100, false);
+
+//    if(testBig(1000, 1000, false) &&
+//       testKaratsuba(1000, 1000, true)) {
+//        cout << endl << "Все тесты пройдены!" << endl;
+//    } else {
+//        cout << endl << "Тесты не пройдены!" << endl;
+//
 //    }
-//    while(a==result_2 && result_3==result_1 && d<b && --T);
-//    if (T) std::cout<< a << b << c << d <<std::endl;
-
-
-    //test for pow
-
-    Big x,y,m;
-    x.rand(10);
-    std::cin >> y >> m;
-    std::cout << "x = " << x << " y = " << y << " m = " << m <<std::endl;
-    x.pow(y, m);
-    std::cout << "x = " << x;
-
-    //test for mulByKaratsuba
-//    Big a,b, standart, karatsuba;
-//    a.rand(100), b.rand(100);
-//    std::cin >> a >> b;
-//    cout << "a = " << a << "\nb = " << b << endl << endl;
-//    standart = a * b;
-
-//    karatsuba = mulByKaratsuba(a, b);
-//    cout << standart << endl;// << ((karatsuba == standart)? "==" : "!=") << endl << karatsuba << endl;
-
-//    Big a;
-//    a = 1;
-//    a.shiftLeft(2);
-//    std::cout << "a = " << a;
-*/
-
-    srand(time(NULL));
-
-    if(testKaratsuba(10, 100000, true)) {
-        cout << endl << "Все тесты пройдены" << endl;
-    };
 
 }
