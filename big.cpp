@@ -1,4 +1,4 @@
-#include "big_number.h"
+#include "big.h"
 
 using namespace BigErrors;
 
@@ -28,13 +28,6 @@ unsigned int nlz(base x)
     return result;
 }
 
-//быть осторожней с конструктором, не определен alloc
-Big::Big(base* newHead, base* newTail)
-{
-    head = newHead;
-    tail = newTail;
-}
-
 Big::Big()
 {
     head = new base[100];
@@ -51,7 +44,8 @@ Big::~Big()
     }
 }
 
-Big::Big(size_t capacity) {
+Big::Big(int capacity)
+{
     head = new base[capacity];
     tail = head;
     alloc= head + capacity - 1;
@@ -83,16 +77,16 @@ void Big::resize(int newCapacity)
         }
         head = new base[newCapacity];
         tail = head;
-        alloc = head + newCapacity -1;
+        alloc = head + newCapacity - 1;
     }
 }
 
-size_t Big::getCapacity() const
+int Big::getCapacity() const
 {
     return alloc - head +1;
 }
 
-size_t Big::getLength() const
+int Big::getLength() const
 {
     return tail - head +1;
 }
@@ -201,6 +195,15 @@ bool operator<=(Big &lhs, Big &rhs)
 bool operator==(Big &lhs, Big &rhs)
 {
     if(compare(lhs, rhs) == 0)
+    {
+        return true;
+    }
+    return false;
+}
+
+bool operator!=(Big &lhs, Big &rhs)
+{
+    if(compare(lhs, rhs) != 0)
     {
         return true;
     }
@@ -459,7 +462,6 @@ void Big::pow(Big &y, Big &mod)
 
 Big operator+(Big &lhs, Big &rhs)
 {
-    Big result;
     d_base tmp;
     d_base mask = static_cast<d_base>(1) << (sizeof(base) * 8);
     int carry = 0;
@@ -467,6 +469,7 @@ Big operator+(Big &lhs, Big &rhs)
     int ALength = lhs.getLength();
     int LessLength;
     int rcapacity,i;
+    Big result{ALength + BLength + 1};
 
     if(ALength <= BLength)
         LessLength = ALength;
@@ -778,23 +781,23 @@ std::ostream &operator<<(std::ostream &out, Big &rhs)
 
 Big mulByKaratsuba(Big &lhs, Big &rhs)
 {
-    size_t lhsLen = lhs.getLength();
-    size_t rhsLen = rhs.getLength();
+    int lhsLen = lhs.getLength();
+    int rhsLen = rhs.getLength();
 
-//    int range = 50;
-//    if (lhsLen < range || rhsLen < range) {
-//        return lhs * rhs;
-//    }
-
-    size_t maxLen = std::max(lhsLen, rhsLen);
-    int sliceLen = maxLen / 2;
-    if(maxLen % 2 == 0) {
-        ++sliceLen;
+    int range = 70; // как его найти?
+    if (lhsLen < range || rhsLen < range) {
+        return lhs * rhs;
     }
+
+    int maxLen = std::max(lhsLen, rhsLen);
+    int sliceLen = (maxLen + 1) / 2;
+//    if(maxLen % 2 == 0) {
+//        ++sliceLen;
+//    }
 
     Big lhsLow, lhsHigh, rhsLow, rhsHigh;
 
-    auto makeSlices = [sliceLen](const Big &num, Big &numLow, Big &numHigh, size_t &numLen) {
+    auto makeSlices = [sliceLen](const Big &num, Big &numLow, Big &numHigh, int &numLen) {
         if(sliceLen < numLen) {
             numLow.head = num.head;
             numLow.tail = &num.head[sliceLen - 1];
@@ -805,31 +808,33 @@ Big mulByKaratsuba(Big &lhs, Big &rhs)
             numLow.head = num.head;
             numLow.tail = num.tail;
 
-            numHigh = 0;
+            numHigh = (Big)0;
         }
     };
 
     makeSlices(lhs, lhsLow, lhsHigh, lhsLen);
     makeSlices(rhs, rhsLow, rhsHigh, rhsLen);
 
-    Big resLow{maxLen};
-    Big resMiddle{maxLen};
-    Big resHigh{maxLen};
-    Big res{lhsLen + rhsLen};
+    Big resLow{sliceLen * 2}; // B
+    Big resMiddle{sliceLen * 4};
+    Big resHigh{sliceLen * 4}; //A
+    Big res{sliceLen * 4};
 
 
-//    resLow = mulByKaratsuba(lhsLow, rhsLow);
-//    resHigh = mulByKaratsuba(lhsHigh,rhsHigh);
-    resLow = lhsLow * rhsLow;
-    resHigh = lhsHigh * rhsHigh;
+    resLow = mulByKaratsuba(lhsLow, rhsLow);
+    resHigh = mulByKaratsuba(lhsHigh,rhsHigh);
+//    resLow = lhsLow * rhsLow;
+//    resHigh = lhsHigh * rhsHigh;
 
 //    resMiddle = mulByKaratsuba(lhsLow + rhsHigh, lhsHigh + rhsLow);
 //  костыль, тк нормально не складывает
-    Big tmp1, tmp2;
+    Big tmp1{sliceLen + 1};
+    Big tmp2{sliceLen + 1};
     tmp1 = lhsLow + lhsHigh;
     tmp2 = rhsHigh + rhsLow;
-//    resMiddle = mulByKaratsuba(tmp1, tmp2);
-    resMiddle = tmp1 * tmp2;
+
+    resMiddle = mulByKaratsuba(tmp1, tmp2);
+//    resMiddle = tmp1 * tmp2;
 
 
     resMiddle = resMiddle - resLow;
@@ -839,10 +844,10 @@ Big mulByKaratsuba(Big &lhs, Big &rhs)
     resMiddle.shiftLeft(sliceLen);
 //    res = resHigh + resMiddle + resLow;
 //  костыль, тк нормально не складывает
-    res = resHigh + resMiddle;
-    res = res + resLow;
+    res = resHigh + resLow;
+    res = res + resMiddle;
 
-
+    //Очищение, тк ссылались на одну память
     lhsLow.head = nullptr;
     lhsHigh.head = nullptr;
     rhsLow.head = nullptr;

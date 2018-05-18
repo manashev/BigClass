@@ -12,7 +12,7 @@ set(TESTS_NAME "${PROJECT_NAME}_tests")
 
 # статическая библиотека
 add_library(${LIB_NAME} STATIC
-        big_number.cpp
+        big.cpp
         )
 set_target_properties(${LIB_NAME} PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}
