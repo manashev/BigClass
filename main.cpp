@@ -1,98 +1,108 @@
-#include <stdlib.h>
-#include <time.h>
-#include "big.h"
-const int test_range = 100;
+#include <iostream>
+#include "big_number.h"
+//#include <ctime>
 
-using namespace BigErrors;
+using std::cout;
+using std::endl;
+
+/*
+ * возведение в степень
+ * приведение по модулю баррет
+ * карацуба
+ * тест миллера рабина
+ * генератор простого вход длина в битах
+ */
+
+/*
+bool mainTest(int T, int M)
+{
+    Big A, B, C, D;
+    do{
+        int n {1 + rand() % M};
+        int m {1 + rand() % M};
+//        int n,m;
+//        n = m = M;
+
+        A.rand(n);
+        B.rand(m);
+
+
+        C = A / B;
+        D = A % B;
+
+//        std::cout << "A = " << A << std::endl
+//                  << "B = " << B << std::endl
+//                  << "C = " << C << std::endl
+//                  << "D = " << D << std::endl << std::endl;
+        if(T % 5 == 0) {
+            std::cout << T << std::endl;
+        }
+    } while (A == B * C + D &&
+             A - D == B * C &&
+             D < B &&
+             --T);
+    if(T)
+    {
+        std::cout << "-----Error-----" << std::endl
+                  << "A = " << A << std::endl
+                  << "B = " << B << std::endl
+                  << "C = " << C << std::endl
+                  << "D = " << D << std::endl
+                  << "T = " << T << std::endl;
+        return false;
+    }
+    std::cout << "Good" << std::endl;
+    return true;
+}
+*/
+
 
 int main()
 {
-    /*
-    Big num, num1, rem, result, result_be, q, w;
+    srand(time(NULL));
 
-     int M = 1024;
-     int T = 10000;
-     srand(time(NULL));
+    //test for big number
+/*
+//    Big a,b,c,d,result_1, result_2, result_3;
+//    int T = 1000, M =1000;
+//    do{
+//        int n = 1 + rand() % M;
+//        int m = 1 + rand() % M;
+//        a.Rand(n);
+//        b.rand(m);
+//        c = a/b;
+//        d = a%b;
+//        result_1 = b*c;
+//        result_2 = result_1 + d;
+//        result_3 = a - d;
+//        std::cout << T << std::endl;
+//    }
+//    while(a==result_2 && result_3==result_1 && d<b && --T);
+//    if (T) std::cout<< a << b << c << d <<std::endl;
+    */
 
-     do {
-         std::cout << T << std::endl;
+    //test for pow
+/*
+    Big x,y,m;
+    x.rand(10);
+    std::cin >> y >> m;
+    std::cout << "x = " << x << " y = " << y << " m = " << m <<std::endl;
+    x.pow(y, m);
+    std::cout << "x = " << x;*/
 
-         int n = rand() % M + 1;
-         int m = rand() % M + 1;
+    //test for mulByKaratsuba
+    Big a,b, standart, karatsuba;
+    a.rand(50), b.rand(50);
+//    std::cin >> a >> b;
+    cout << "a = " << a << "\nb = " << b << endl << endl;
+    standart = a * b;
 
-         num.Rand(n);
-         num1.Rand(m);
+    karatsuba = mulByKaratsuba(a, b);
+    cout << standart << endl << ((karatsuba == standart)? "==" : "!=") << endl << karatsuba << endl;
 
-         if (CompareWithZero(num1))
-             continue;
+//    Big a;
+//    a = 1;
+//    a.shiftLeft(2);
+//    std::cout << "a = " << a;
 
-         result = Division(num, num1, rem);
-         result_be = num1 * result;
-         result_be = result_be + rem;
-         T--;
-         q = num - rem;
-         w = num1 * result;
-     } while ((num == result_be) && (q == w) && (rem < num1) && T);
-
-     if (T) {
-         std::cout << "LENGTH num = " << num.GetLength() << std::endl;
-         std::cout << "Length result_be = " << result_be.GetLength() << std::endl;
-         std::cout << "num = " << num << std::endl;
-         std::cout << "num1 = " << num1 << std::endl;
-         std::cout << "result = " << result << std::endl;
-         std::cout << "rem = " << rem << std::endl;
-         std::cout << "result_be = " << result_be << std::endl;
-         std::cout << "q = " << q <<std::endl;
-         std::cout << "w = " << w << std::endl;
-     };
-*/
-    Big x, z, mod, result, result1;
-    int M = 10000;
-    int T, T1;
-    T = T1 = test_range;
-    int t;
-    /*
-        while(T) {
-          x.Rand(rand()%M);
-          z.Rand(rand()%M);
-
-          result = Karatsuba(x, z);
-          result1 = x*z;
-          if(result != result1) {
-            std::cout << "T = " <<T << std::endl;
-            std::cout << "x = " << x << std::endl;
-            std::cout << "z = " << z << std::endl;
-            std::cout << "result  = " << result << std::endl;
-            std::cout << "result1 = " << result1 << std::endl;
-            std::cout << "result_length  = " << result.GetLength() << std::endl;
-            std::cout << "result1_length = " << result1.GetLength() << std::endl;
-            return 0;
-          }
-          T--;
-        }*/
-
-    /*    x.Rand(M);
-        z.Rand(M);
-        t = time(NULL);
-        while (T) {
-            Karatsuba(x, z);
-            T--;
-        }
-        t = time(NULL) - t;
-        std::cout << "Karatsuba time: " << t << std::endl;
-
-        t = time(NULL);
-        while (T1) {
-            x *z;
-            T1--;
-        }
-        t = time(NULL) - t;
-        std::cout << "Mul time: " << t << std::endl;*/
-
-    Big n;
-    std::cin >> n;
-
-    if (MillerRabin(n, 10)) {
-        std::cout << "OK" << std::endl;
-    }
 }

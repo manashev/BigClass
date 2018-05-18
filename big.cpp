@@ -1,816 +1,872 @@
-#include "big.h"
-#include <stdlib.h>
+#include "big_number.h"
 
 using namespace BigErrors;
-const int DEBUG_MODE = 0;
 
-Big ::Big()
+/*
+head - указатель на начало числа
+tail - указатель на конец числа
+alloc - количество выделенной памяти
+length - мощность - количество блоков
+capacity - емкость, количество выделенной памяти
+*/
+unsigned int nlz(base x)
 {
-    al = new base[100];
-    ah = al + 99;
-    ar = al;
-    int i = 0;
-    while (al + i - 1 != ah) {
-        al[i] = 0;
-        i++;
-    }
-}
-
-Big ::~Big()
-{
-    if (al) {
-        delete[] al;
-        al = NULL;
-    }
-}
-
-Big ::Big(const Big &old_n)
-{
-    int capacity = old_n.ah - old_n.al + 1;
-    int length = old_n.ar - old_n.al + 1;
-
-    al = new base[capacity];
-    ah = al + capacity - 1;
-    ar = al;
-    for (int i = 0; i < length; i++) {
-        al[i] = old_n.al[i];
-        ar++;
-    }
-    ar--;
-}
-
-int Big ::Rand(int boundary)
-{
-    if (GetCapacity() < boundary) {
-        Resize(boundary + 1);
-    }
-
-    ar = al;
-    ah = al + GetCapacity() - 1;
-    for (int i = 0; i < boundary; i++) {
-        al[i] = rand();
-        ar++;
-    }
-    ar--;
-    return 0;
-}
-
-int Big ::GetCapacity() const
-{
-    return ah - al + 1;
-}
-
-int Big ::GetLength() const
-{
-    return ar - al + 1;
-}
-
-// quantity of boxes
-void Big ::Resize(int new_capacity)
-{
-    if (GetCapacity() < new_capacity) {
-        if (al) {
-            delete[] al;
+    unsigned int result = sizeof(base) * 8, sdwig = sizeof(base) * 8 / 2, add = sdwig;
+    while (add > 0)
+    {
+        if((x>>sdwig) == 0)
+        {
+            result -= add; x <<= add;
+//            std::cout << "x >>" << sdwig << " = 0  " << "  result = " << result;
         }
-        al = new base[new_capacity];
-        ah = al + new_capacity - 1;
-        ar = al;
+        add /= 2;
+        sdwig += add;
+
+//        std::cout << "   add = " << add << "   sdwig = " << sdwig << std::endl;
     }
-    int i = 0;
-    while (al + i - 1 != ah) {
-        al[i] = 0;
-        i++;
+//    std::cout << std::endl << "result = " << result;
+    return result;
+}
+
+//быть осторожней с конструктором, не определен alloc
+Big::Big(base* newHead, base* newTail)
+{
+    head = newHead;
+    tail = newTail;
+}
+
+Big::Big()
+{
+    head = new base[100];
+    tail = head;
+    alloc= head + 100 - 1;
+}
+
+Big::~Big()
+{
+    if(head)
+    {
+        delete[] head;
+        head = NULL;
     }
 }
 
-// aborting insignificant zeros
-void Big ::Compress()
+Big::Big(size_t capacity) {
+    head = new base[capacity];
+    tail = head;
+    alloc= head + capacity - 1;
+}
+
+Big::Big(const Big &rhs)
 {
-    for (int i = GetLength() - 1; 0 <= i; i--) {
-        if (al[i] != 0) {
+    int capacity = rhs.alloc - rhs.head +1;
+    int length = rhs.tail - rhs.head +1;
+
+    head = new base[capacity];
+    alloc = head + capacity -1;
+    tail = head;
+    for (int i = 0; i < length; i++)
+    {
+        head[i] = rhs.head[i];
+        tail++;
+    }
+    tail--;
+}
+
+void Big::resize(int newCapacity)
+{
+    if(getCapacity() < newCapacity)
+    {
+        if(head)
+        {
+            delete[] head;
+        }
+        head = new base[newCapacity];
+        tail = head;
+        alloc = head + newCapacity -1;
+    }
+}
+
+size_t Big::getCapacity() const
+{
+    return alloc - head +1;
+}
+
+size_t Big::getLength() const
+{
+    return tail - head +1;
+}
+
+void Big::rand(int bound)
+{
+    if(getCapacity() <  bound)
+    {
+        resize(bound + 1);
+    }
+    tail = head;
+    alloc = head + getCapacity() -1;
+    for (int i = 0; i < bound; i++)
+    {
+        head[i] = std::rand();
+        tail++;
+    }
+    tail--;
+}
+
+void Big::compress()
+{
+    for(int i = getLength() - 1; 0 <= i; i--)
+    {
+        if (head[i] != 0)
+        {
             return;
         }
-        ar--;
+        tail--;
     }
-}
-
-Big Big ::Mul(base small)
-{
-    Big result;
-
-    if (0 == small) {
-        result.al[0] = 0;
-        result.ar = result.al;
-        return result;
-    }
-    doubleBase mask = static_cast<doubleBase>(1) << (sizeof(base) * 8);
-
-    if (result.GetCapacity() < GetLength() + 1) {
-        result.Resize(GetLength() + 1);
-    }
-
-    doubleBase cup;
-    doubleBase carry = 0;
-    result.ar = result.al;
-
-    int i;
-    for (i = 0; i < GetLength(); i++) {
-        cup = static_cast<doubleBase>(al[i]) * static_cast<base>(small) + carry;
-        carry = cup / mask;
-        result.al[i] = static_cast<base>(cup % mask);
-        result.ar++;
-    }
-
-    result.al[i] = carry;
-    result.Compress();
-    return result;
-}
-
-Big Big ::Div(base small, base &remainder)
-{
-    Big result;
-    if (0 == small) {
-        throw DIV_ZERO;
-    }
-
-    if (GetLength() <= 1 && 0 == al[0]) {  // comparison with zero
-        result.ar = result.al;
-        result.al[0] = 0;
-        remainder = small;
-        return result;
-    }
-
-    result.Resize(GetCapacity());
-
-    doubleBase t = 0;
-    doubleBase mask = static_cast<doubleBase>(1) << (sizeof(base) * 8);
-    remainder = 0;
-
-    result.ar = result.al + GetLength() - 1;
-    for (int i = 0; i < result.GetLength(); i++) {
-        result.al[i] = 0;
-    }
-
-    for (int i = GetLength() - 1; 0 <= i; i--) {
-        t = static_cast<doubleBase>(al[i]) + static_cast<doubleBase>(remainder) * mask;
-
-        result.al[i] = static_cast<base>(t / small);
-        remainder = static_cast<base>(t % static_cast<doubleBase>(small));
-    }
-
-    result.Compress();
-    return result;
 }
 
 /*1 - больше
  * -1 меньше
  * 0 - равно*/
-
-int Compare(const Big &b, const Big &a)
+int compare(const Big &lhs, const Big &rhs)
 {
-    if (b.GetLength() > a.GetLength()) {
+    if(lhs.getLength() > rhs.getLength())
+    {
         return 1;
-    } else if (b.GetLength() < a.GetLength()) {
-        return -1;
     }
-
-    for (int i = a.GetLength() - 1; 0 <= i; i--) {
-        if (b.al[i] > a.al[i]) {
-            return 1;
-        } else if (b.al[i] < a.al[i]) {
+    else
+        if(lhs.getLength() < rhs.getLength())
+        {
             return -1;
         }
+    for(int i = rhs.getLength() - 1; 0 <= i; i--)
+    {
+        if(lhs.head[i] > rhs.head[i])
+            return 1;
+        else
+            if (lhs.head[i] < rhs.head[i])
+            {
+                return -1;
+            }
     }
-
     return 0;
 }
 
-int CompareWithZero(const Big &a)
+int compareWithZero(const Big &rhs)
 {
-    for (int i = a.GetLength() - 1; 0 <= i; i--) {
-        if (a.al[i] != 0) {
+    for (int i = rhs.getLength() - 1; 0 <= i; i--)
+    {
+        if (rhs.head[i] != 0)
+        {
             return false;
         }
     }
     return true;
 }
 
-int CompareWithConst(const Big &b, base a)
+bool operator>(Big &lhs, Big &rhs)
 {
-    if ((b.al[0] == a) && b.ar == b.al) {
+    if (compare(lhs, rhs) == 1) {
         return true;
     }
     return false;
 }
 
-Big &Big ::operator=(const Big &a)
+bool operator<(Big &lhs, Big &rhs)
 {
-    if (GetCapacity() < a.GetCapacity()) {
-        Resize(a.GetCapacity());
-    }
-
-    ar = al;
-    int length = a.GetLength();
-
-    for (int i = 0; i < length; i++) {
-        al[i] = a.al[i];
-        ar++;
-    }
-    ar--;
-}
-
-Big &Big ::operator=(base a)
-{
-    if (GetCapacity() < 1) {
-        Resize(1);
-    }
-
-    ar = al;
-    al[0] = a;
-}
-
-Big &Big::operator=(doubleBase a)
-{
-    if (GetCapacity() < 1) {
-        Resize(2);
-    }
-
-    ar = al + 1;
-    al[0] = a % (static_cast<doubleBase>(1) << (sizeof(base) * 8));
-    al[1] = a / (static_cast<doubleBase>(1) << (sizeof(base) * 8));
-    Compress();
-}
-
-Big operator+(Big &b, Big &a)
-{
-    Big result;
-    doubleBase glass;  // for the overflow:)
-    doubleBase mask = static_cast<doubleBase>(1) << (sizeof(base) * 8);
-    int carry = 0;  // at the begin of addition
-    int BLength = b.GetLength();
-    int ALength = a.GetLength();
-    int LessLength;
-    int rcapacity;
-
-    if (ALength <= BLength) {
-        LessLength = ALength;
-    } else {
-        LessLength = BLength;
-    }
-
-    if (a.GetCapacity() <= b.GetCapacity()) {
-        rcapacity = b.GetCapacity();
-    } else {
-        rcapacity = a.GetCapacity();
-    }
-
-    if (rcapacity + 1 > result.GetCapacity()) {
-        result.Resize(rcapacity + 1);
-    }
-
-    result.ar = result.al;
-
-    int i;
-    for (i = 0; i < LessLength; i++) {
-        glass = static_cast<doubleBase>(b.al[i]) + static_cast<doubleBase>(a.al[i]) + carry;
-        result.al[i] = glass % mask;
-        carry = !!(glass / mask);  // for the next digit
-        result.ar++;
-    }
-    // add tail from array, which longer
-    if (i < ALength) {
-        for (i = i; i < ALength; i++) {
-            glass = a.al[i] + carry;
-            result.al[i] = glass % mask;
-            result.ar++;
-            carry = !!(glass / mask);
-        }
-    }
-
-    else if (i < BLength) {
-        for (i = i; i < BLength; i++) {
-            glass = b.al[i] + carry;
-            result.al[i] = glass % mask;
-            result.ar++;
-            carry = !!(glass / mask);
-        }
-    }
-
-    if (carry) {  // digit carry in
-        result.al[i] = carry;
-        result.ar++;
-    }
-    result.ar--;
-    result.Compress();
-    return result;
-}
-
-Big operator-(Big &b, Big &a)
-{
-    int flag = Compare(b, a);
-    if (-1 == flag) {
-        cout << "incompatible_operands" << endl;
-        throw INCOMPATIBLE_OPERANDS;
-    }
-
-    Big result;
-    result.Resize(b.GetCapacity());
-    result.ar = result.al;
-
-    // if they are equal
-    if (0 == flag) {
-        result.al[0] = 0;
-        return result;
-    }
-
-    int carry = 0;
-    int given = 0;
-    doubleBase mask = static_cast<doubleBase>(1) << (sizeof(base) * 8);
-    doubleBase cup = 0;
-    doubleBase glass;
-
-    int i;
-
-    for (i = 0; i < a.GetLength(); i++) {
-        result.ar++;
-        cup = static_cast<doubleBase>(a.al[i]) + static_cast<doubleBase>(carry);
-        carry = 0;
-
-        if (static_cast<doubleBase>(b.al[i]) < cup) {
-            given = 1;
-        }
-
-        if (given) {
-            glass = static_cast<doubleBase>(b.al[i]) + mask - cup;
-            result.al[i] = static_cast<base>(glass);
-            carry = 1;
-            given = 0;
-        }
-
-        else {
-            result.al[i] = b.al[i] - static_cast<base>(cup);
-        }
-    }
-
-    for (i; i < b.GetLength(); i++) {
-        result.ar++;
-        cup = carry;
-        carry = 0;
-        if (static_cast<doubleBase>(b.al[i]) < cup) {
-            given = 1;
-        }
-
-        if (given) {
-            glass = static_cast<doubleBase>(b.al[i]) + mask - static_cast<doubleBase>(cup);
-            result.al[i] = glass;
-            carry = 1;
-            given = 0;
-        }
-
-        else {
-            result.al[i] = static_cast<doubleBase>(b.al[i]) - static_cast<doubleBase>(cup);
-        }
-    }
-    result.ar--;
-    result.Compress();
-    return result;
-}
-
-Big operator*(Big &b, Big &a)
-{
-    Big result;
-    if (CompareWithZero(b) || CompareWithZero(a)) {
-        result.al[0] = 0;
-        result.ar = result.al;
-        return result;
-    }
-
-    if (a.GetLength() <= 1) {
-        result = b.Mul(a.al[0]);
-        return result;
-    }
-    result.Resize(b.GetLength() + a.GetLength());
-
-    doubleBase mask = static_cast<doubleBase>(1) << (sizeof(base) * 8);
-    doubleBase cup;
-    doubleBase carry = 0;
-
-    // filling with zeros
-    for (int i = 0; i < result.GetCapacity(); i++) {
-        result.al[i] = 0;
-        result.ar++;
-    }
-    result.ar--;
-
-    int i, j;
-    for (j = 0; j < a.GetLength(); j++) {
-        if (0 == a.al[j]) {
-            continue;
-        }
-
-        for (i = 0; i < b.GetLength(); i++) {
-            cup = static_cast<doubleBase>(b.al[i]) * static_cast<doubleBase>(a.al[j]) +
-                static_cast<doubleBase>(result.al[i + j]) + carry;
-            result.al[i + j] = static_cast<base>(cup);
-            carry = cup >> sizeof(base) * 8;
-        }
-        result.al[i + j] = carry;
-        carry = 0;
-    }
-    result.Compress();
-    return result;
-}
-
-// e/c
-Big Division(Big &e, Big &c, Big &remainder)
-{
-    Big a, b, result;
-    a.Resize(e.GetLength() + 1);
-
-    a = e;
-    b = c;
-
-    int j = 0;
-    int n = b.GetLength();
-    int m = a.GetLength() - n;
-    int flag;  //для 4 шага
-
-    if (DEBUG_MODE) {
-        std::cout << "a = 0x" << a << std::endl;
-        std::cout << "b = 0x" << b << std::endl;
-    }
-
-    if (CompareWithZero(e)) {
-        result.ar = result.al;
-        result.al[0] = 0;
-        remainder.ar = remainder.al;
-        remainder.al[0] = 0;
-        return result;
-    }
-
-    if (-1 == Compare(e, c)) {
-        result.ar = result.al;
-        result.al[0] = 0;
-        remainder = e;
-        return result;
-    }
-
-    //если деление на базу
-    if (b.GetLength() <= 1) {
-        base r;
-        result = a.Div(b.al[0], r);
-        remainder.al[0] = r;
-        remainder.ar = remainder.al;
-        return result;
-    }
-
-    doubleBase d, mask;
-    mask = static_cast<doubleBase>(1) << (sizeof(base) * 8);
-    d = mask / static_cast<doubleBase>(b.al[b.GetLength() - 1] + 1);
-
-    /*NORMALIZATION*/
-    //считаем d
-    if (DEBUG_MODE) {
-        std::cout << "0x" << std::hex << d << " = 0x" << mask << "/"
-                  << "(0x" << std::hex << b.al[b.GetLength() - 1] << "+1)" << std::endl;
-    }
-
-    a = a.Mul(static_cast<base>(d));
-    if (a.GetLength() == e.GetLength()) {
-        if (DEBUG_MODE) {
-            std::cout << "d = 1" << std::endl;
-        }
-        a.ar++;
-        a.al[a.GetLength() - 1] = 0;
-    }
-    b = b.Mul(static_cast<base>(d));
-
-    if (DEBUG_MODE) {
-        std::cout << "NORMALIZATION:" << std::endl;
-        std::cout << "a = 0x" << a << std::endl;
-        std::cout << "b = 0x" << b << std::endl << std::endl;
-
-        std::cout << "начинаем делить:" << std::endl;
-        std::cout << "n = " << n << std::endl;
-        std::cout << "m = " << m << std::endl;
-    }
-
-    doubleBase roof, left_part, right_part;
-    Big glass, new_num, q;
-
-    new_num.Resize(a.GetLength());
-    q.Resize(a.GetLength());
-    q.ar = q.al + m + 1;
-
-    for (int i = 0; i < q.GetLength(); i++) {
-        q.al[i] = 0;
-    }
-
-    base b1 = b.al[b.GetLength() - 1];
-    base b2 = b.al[b.GetLength() - 2];
-
-    if (DEBUG_MODE) {
-        std::cout << "b1 = 0x" << std::hex << b1 << std::endl;
-        std::cout << "b2 = 0x" << std::hex << b2 << std::endl;
-    }
-
-    base aj, aj1, aj2;
-    for (j = 0; j <= m; j++) {
-        aj = a.al[a.GetLength() - j - 1];
-        aj1 = a.al[a.GetLength() - j - 1 - 1];
-        aj2 = a.al[a.GetLength() - j - 1 - 2];
-
-        if (DEBUG_MODE) {
-            std::cout << "====================================" << std::endl;
-            std::cout << "j = " << j << std::endl;
-            std::cout << "a[j] = " << aj << std::endl;
-            std::cout << "a[j+1] = " << aj1 << std::endl;
-            std::cout << "a[j+2] = " << aj2 << std::endl;
-        }
-
-        if (aj == b1) {
-            roof = mask - 1;
-        } else {
-            if (DEBUG_MODE) {
-                std::cout << "(0x" << std::hex << aj << "*0x" << std::hex << mask << "+0x" << std::hex << aj1 << ")/0x"
-                          << std::hex << b1 << std::endl;
-            }
-            roof = (static_cast<doubleBase>(aj) * static_cast<doubleBase>(mask) + static_cast<doubleBase>(aj1)) /
-                static_cast<doubleBase>(b1);
-            if (DEBUG_MODE) {
-                std::cout << "=0x" << std::hex << roof << std::endl;
-            }
-        }
-
-        //проверка неравенства
-
-        while (1) {
-            left_part = static_cast<doubleBase>(b2) * roof;
-
-            right_part =
-                static_cast<doubleBase>(aj) * mask + static_cast<doubleBase>(aj1) - roof * static_cast<doubleBase>(b1);
-            /*дальнейшее умножение приведет к переполнению,
-             * а left_part переполнится никогда не может =>
-             * нервенство не выполнено*/
-            if (right_part >> sizeof(base) * 8) {
-                break;
-            }
-            right_part = right_part * mask + static_cast<doubleBase>(aj2);
-            if (left_part > right_part) {
-                roof--;
-                if (DEBUG_MODE) {
-                    std::cout << "roof--" << std::endl;
-                }
-            } else
-                break;
-        }
-
-        if (DEBUG_MODE) {
-            std::cout << "roof = 0x" << std::hex << roof << std::endl;
-        }
-
-        //умножить и вычесть
-
-        new_num.ar = new_num.al;
-
-        for (int i = 0; i <= n; i++) {
-            new_num.al[n - i] = a.al[a.GetLength() - j - 1 - i];
-            new_num.ar++;
-        }
-        new_num.ar--;
-
-        if (DEBUG_MODE) {
-            std::cout << "new_num = 0x" << new_num << std::endl;
-        }
-
-        flag = 0;
-        glass = b.Mul(static_cast<base>(roof));
-        while (-1 == Compare(new_num, glass)) {
-            cout << "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$" << std::endl;
-            cout << "roof " << hex << roof << endl;
-            roof--;
-            flag = 1;
-            //	cout << "glas --- " << endl;
-            cout << "glass = " << glass << endl;
-            glass = b.Mul(static_cast<base>(roof));
-            cout << "glass1 = " << glass << endl;
-
-            cout << "new_num  = " << new_num << endl;
-            cout << "roof1  = " << hex << roof << endl;
-
-            cout << "b = " << b << endl;
-            cout << "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$" << std::endl;
-            exit(0);
-        }
-
-        int stored_length_new_num = new_num.GetLength();
-        new_num = new_num - glass;
-
-        if (stored_length_new_num > new_num.GetLength()) {
-            for (int i = new_num.GetLength(); i < stored_length_new_num; i++) {
-                new_num.al[i] = 0;
-                new_num.ar++;
-            }
-        }
-
-        if (DEBUG_MODE) {
-            std::cout << "после вычитания new_num:" << std::endl;
-            std::cout << "0x" << new_num << std::endl;
-        }
-
-        for (int i = 0; i <= n; i++) {
-            a.al[a.GetLength() - j - 1 - i] = new_num.al[n - i];
-        }
-
-        if (DEBUG_MODE) {
-            std::cout << "переписали new_num в a:" << std::endl;
-            std::cout << "0x" << a << std::endl;
-        }
-
-        if (flag) {
-            if (DEBUG_MODE) {
-                std::cout << "шаг 4 был отрицательный" << std::endl;
-            }
-            roof--;
-            a = a + b;
-        }
-        q.al[m - j] = static_cast<base>(roof);
-    }
-
-    if (DEBUG_MODE) {
-        std::cout << "главный цикл закончен" << std::endl;
-    }
-
-    base r;
-    remainder = a.Div(d, r);
-    q.Compress();
-
-    if (DEBUG_MODE) {
-        std::cout << "частное = 0x" << q << std::endl;
-        std::cout << "остаток = 0x" << a << std::endl;
-    }
-
-    return q;
-}
-
-Big operator/(Big &a, Big &b)
-{
-    Big remainder;
-    return Division(a, b, remainder);
-}
-
-Big operator%(Big &a, Big &b)
-{
-    Big remainder;
-
-    Division(a, b, remainder);
-    return remainder;
-}
-
-Big Degree(Big &x, Big &y, Big &mod)
-{
-    Big zBurret = GetZForBurretReduction(mod);
-    Big q = x;
-    Big z;
-
-    if (y.al[0] & 1) {
-        z = x;
-    } else {
-        z = static_cast<base>(1);
-    };
-
-    int j = 1;
-    int i = 0;
-    for (i = 0; i < y.GetLength(); i++) {
-        for (j; j < sizeof(base) * 8; j++) {
-            q = q * q;
-            q = BurretReduction(q, mod, zBurret);
-            if ((y.al[i] >> j) & 1) {
-                z = z * q;
-                z = BurretReduction(z, mod, zBurret);
-            }
-        }
-        j = 0;
-    }
-    return z;
-}
-
-bool operator>(Big &a, Big &b)
-{
-    if (Compare(a, b) == 1) {
+    if (compare(lhs, rhs) == -1) {
         return true;
     }
     return false;
 }
 
-bool operator<(Big &a, Big &b)
+bool operator>=(Big &lhs, Big &rhs)
 {
-    if (Compare(a, b) == -1) {
-        return true;
-    }
-    return false;
-}
-
-bool operator>=(Big &a, Big &b)
-{
-    int result = Compare(a, b);
+    int result = compare(lhs, rhs);
     if ((result == 1) || (result == 0)) {
         return true;
     }
     return false;
 }
 
-bool operator<=(Big &a, Big &b)
+bool operator<=(Big &lhs, Big &rhs)
 {
-    int result = Compare(a, b);
+    int result = compare(lhs, rhs);
     if ((result == -1) || (result) == 0) {
         return true;
     }
     return false;
 }
 
-bool operator==(Big &a, Big &b)
+bool operator==(Big &lhs, Big &rhs)
 {
-    if (Compare(a, b) == 0) {
+    if(compare(lhs, rhs) == 0)
+    {
         return true;
     }
     return false;
 }
 
-bool operator!=(Big &a, Big &b)
+Big Big::mulBase(base rhs)
 {
-    if (Compare(a, b) != 0) {
-        return true;
+    Big result;
+
+    if(0 == rhs)
+    {
+        result.head[0] = 0;
+        result.tail = result.head;
+        return result;
     }
-    return false;
+    d_base mask = static_cast<d_base>(1) << (sizeof(base) * 8);
+
+    if (result.getCapacity() < getLength() + 1) {
+        result.resize(getLength() + 1);
+    }
+
+    d_base tmp;
+    d_base carry = 0;
+    result.tail = result.head;
+
+    int i;
+    for (i = 0; i < getLength(); i++)
+    {
+        tmp = static_cast<d_base>(head[i]) * static_cast<base>(rhs) + carry;
+        carry = tmp / mask;
+        result.head[i] = static_cast<base>(tmp % mask);
+        result.tail++;
+    }
+
+    result.head[i] = carry;
+    result.compress();
+    return result;
 }
 
-ostream &operator<<(ostream &out, Big &a)
+Big Big::divBase(base rhs, base &remainder)
+{
+    Big result;
+    if (0 == rhs) {
+        throw DIV_ZERO;
+    }
+
+    if (getLength() <= 1 && 0 == head[0])  // comparison with zero
+    {
+        result.tail = result.head;
+        result.head[0] = 0;
+        remainder = rhs;
+        return result;
+    }
+
+    result.resize(getCapacity());
+
+    d_base t = 0;
+    d_base mask = static_cast<d_base>(1) << (sizeof(base) * 8);
+    remainder = 0;
+
+    result.tail = result.head + getLength() -1;
+    for(int i = 0; i < result.getLength(); i++)
+    {
+        result.head[i] = 0;
+    }
+
+    for (int i = getLength() - 1; 0 <= i; i--)
+    {
+        t = static_cast<d_base>(head[i]) + static_cast<d_base>(remainder) * mask;
+        result.head[i] = static_cast<base>(t / rhs);
+        remainder = static_cast<base>(t % static_cast<d_base>(rhs));
+    }
+
+    result.compress();
+    return result;
+
+}
+
+// e/c
+Big div(Big &e, Big &c, Big &remainder)
+{
+    Big a, b, result;
+    a.resize(e.getLength() + 1);
+
+    a = e;
+    b = c;
+
+    int j = 0, n = b.getLength(), m = a.getLength() - n, flag;
+
+    if(compareWithZero(e))
+    {
+        result.tail = result.head + 1;
+        result.head[0] = 0;
+        remainder.tail = remainder.head + 1;
+        remainder.head[0] = 0;
+        return result;
+    }
+
+    if (-1 == compare(e, c))
+    {
+        result.tail = result.head;
+        result.head[0] = 0;
+        remainder = e;
+        return result;
+    }
+
+    //if base divBase
+    if (b.getLength() <= 1)
+    {
+        base r;
+        result = a.divBase(b.head[0], r);
+        remainder.head[0] = r;
+        remainder.tail = remainder.head;
+        return result;
+    }
+
+    d_base d, mask;
+    mask = static_cast<d_base>(1) << (sizeof(base) * 8);
+    d = mask / static_cast<d_base>(b.head[b.getLength() - 1] + 1);
+
+    a = a.mulBase(static_cast<base>(d));
+    if(a.getLength() == e.getLength())
+    {
+        a.tail++;
+        a.head[a.getLength() - 1] = 0;
+    }
+    b = b.mulBase(static_cast<base>(d));
+
+    d_base roof, left_part, right_part;
+    Big glass, new_num, q;
+
+    new_num.resize(a.getLength());
+    q.resize(a.getLength());
+    q.tail = q.head + m + 1;
+
+    for(int i = 0; i < q.getLength(); i++)
+    {
+        q.head[i] = 0;
+    }
+
+    base b1 = b.head[b.getLength() - 1];
+    base b2 = b.head[b.getLength() - 2];
+    base aj, aj1, aj2;
+    for(j = 0; j <= m; j++)
+    {
+        aj = a.head[a.getLength() - j - 1];
+        aj1 = a.head[a.getLength() - j - 2];
+        aj2 = a.head[a.getLength() - j - 3];
+
+        if (aj == b1)
+        {
+            roof = mask - 1;
+        }
+        else
+        {
+            roof = (static_cast<d_base>(aj) * static_cast<d_base>(mask)
+                    + static_cast<d_base>(aj1)) /
+                static_cast<d_base>(b1);
+        }
+
+        //check uneq
+        while (1)
+        {
+            left_part = static_cast<d_base>(b2) * roof;
+
+            right_part = static_cast<d_base>(aj) * mask + static_cast<d_base>(aj1)
+                    - roof * static_cast<d_base>(b1);
+            /*дальнейшее умножение приведет к переполнению,
+         * а left_part переполнится никогда не может =>
+         * нервенство не выполнено*/
+            if (right_part >> sizeof(base) * 8)
+            {
+                break;
+            }
+            right_part = right_part * mask + static_cast<d_base>(aj2);
+            if (left_part > right_part)
+            {
+                roof--;
+            } else
+                break;
+        }
+        //mulBase and sub
+
+        new_num.tail = new_num.head;
+
+        for (int i = 0; i <= n; i++)
+        {
+            new_num.head[n - i] = a.head[a.getLength() - j - 1 - i];
+            new_num.tail++;
+        }
+        new_num.tail--;
+
+        flag = 0;
+        glass = b.mulBase(static_cast<base>(roof));
+        while (-1 == compare(new_num, glass))
+        {
+            roof--;
+            flag = 1;
+            glass = b.mulBase(static_cast<base>(roof));
+            exit(0);
+        }
+
+        int stored_length_new_num = new_num.getLength();
+        new_num = new_num - glass;
+
+        if (stored_length_new_num > new_num.getLength())
+        {
+            for (int i = new_num.getLength(); i < stored_length_new_num; i++)
+            {
+                new_num.head[i] = 0;
+                new_num.tail++;
+            }
+        }
+
+        for (int i = 0; i <= n; i++)
+        {
+            a.head[a.getLength() - j - 1 - i] = new_num.head[n - i];
+        }
+
+        if (flag)
+        {
+            roof--;
+            a = a + b;
+        }
+        q.head[m - j] = static_cast<base>(roof);
+    }
+    base r;
+    remainder = a.divBase(d, r);
+    q.compress();
+    return q;
+}
+
+void Big::pow(Big &y, Big &mod)
+{
+    Big z = *this;
+    int n = nlz(y.head[y.getLength() - 1]);
+    n-=2;
+    for(int i = y.getLength() - 1; i >= 0; i--)
+    {
+        while (n >= 0)
+        {
+            z = z * z;
+            z = z % mod;
+            if((y.head[i] >> n) & 1)
+            {
+                z = z * *this;
+                z = z % mod;
+            }
+            n--;
+        }
+        n = sizeof(base) * 8;
+    }
+    *this = z;
+}
+
+Big operator+(Big &lhs, Big &rhs)
+{
+    Big result;
+    d_base tmp;
+    d_base mask = static_cast<d_base>(1) << (sizeof(base) * 8);
+    int carry = 0;
+    int BLength = rhs.getLength();
+    int ALength = lhs.getLength();
+    int LessLength;
+    int rcapacity,i;
+
+    if(ALength <= BLength)
+        LessLength = ALength;
+    else
+        LessLength = BLength;
+
+    if(lhs.getCapacity() <= rhs.getCapacity())
+    {
+        rcapacity = rhs.getCapacity();
+    }
+    else
+    {
+        rcapacity = lhs.getCapacity();
+    }
+
+    if(rcapacity + 1 > result.getCapacity())
+    {
+        result.resize(rcapacity + 1);
+    }
+
+    result.tail = result.head;
+
+    for (i = 0; i < LessLength; i++)
+    {
+        tmp = static_cast<d_base>(rhs.head[i]) +
+                static_cast<d_base>(lhs.head[i]) + carry;
+        result.head[i] = tmp % mask;
+        carry = !!(tmp / mask);
+        result.tail++;
+    }
+
+    if(i < ALength)
+    {
+        for(; i < ALength; i++)
+        {
+            tmp = lhs.head[i] + carry;
+            result.head[i] = tmp % mask;
+            result.tail++;
+            carry = !!(tmp / mask);
+        }
+    }
+    else
+        if(i < BLength)
+        {
+            for(; i < BLength; i++)
+            {
+                tmp = rhs.head[i] + carry;
+                result.head[i] = tmp % mask;
+                result.tail++;
+                carry = !!(tmp / mask);
+            }
+        }
+    if (carry)
+    {
+        result.head[i] = carry;
+        result.tail++;
+    }
+    result.tail--;
+    result.compress();
+    return result;
+}
+
+Big operator-(Big& lhs, Big& rhs)
+{
+    int flag = compare(lhs, rhs);
+    if(-1 == flag)
+    {
+        std::cout << "invalid operation" << std::endl;
+        throw INCOMPATIBLE_OPERANDS;
+    }
+
+    Big result;
+    result.resize(lhs.getCapacity());
+    result.tail = result.head;
+
+    if(0 == flag)
+    {
+        result.head[0]=0;
+        return result;
+    }
+    int carry = 0, given = 0;
+    d_base mask = static_cast<d_base>(1) << (sizeof(base) * 8);
+    d_base tmp0 = 0;
+    d_base tmp1;
+
+    int i;
+    for (i = 0; i < rhs.getLength(); i++)
+    {
+        result.tail++;
+        tmp0 = static_cast<d_base>(rhs.head[i]) + static_cast<d_base>(carry);
+        carry = 0;
+
+        if (static_cast<d_base>(lhs.head[i]) < tmp0)
+        {
+            given = 1;
+        }
+
+        if (given) {
+            tmp1 = static_cast<d_base>(lhs.head[i]) + mask - tmp0;
+            result.head[i] = static_cast<base>(tmp1);
+            carry = 1;
+            given = 0;
+        }
+
+        else {
+            result.head[i] = lhs.head[i] - static_cast<base>(tmp0);
+        }
+    }
+
+    for (i; i < lhs.getLength(); i++)
+    {
+        result.tail++;
+        tmp0 = carry;
+        carry = 0;
+        if (static_cast<d_base>(lhs.head[i]) < tmp0)
+        {
+            given = 1;
+        }
+
+        if (given) {
+            tmp1 = static_cast<d_base>(lhs.head[i]) + mask - static_cast<d_base>(tmp0);
+            result.head[i] = tmp1;
+            carry = 1;
+            given = 0;
+        }
+        else {
+            result.head[i] = static_cast<d_base>(lhs.head[i]) - static_cast<d_base>(tmp0);
+        }
+    }
+    result.tail--;
+    result.compress();
+    return result;
+}
+
+Big operator*(Big& lhs, Big& rhs)
+{
+    Big result;
+    if (rhs.getLength() <= 1) {
+        result = lhs.mulBase(rhs.head[0]);
+        return result;
+    }
+
+    result.resize(lhs.getLength() + rhs.getLength());
+
+    d_base mask = static_cast<d_base>(1) << (sizeof(base) * 8);
+    d_base tmp, carry = 0;
+
+    for(int i = 0; i < result.getCapacity(); i++)
+    {
+        result.head[i] = 0;
+        result.tail++;
+    }
+    result.tail--;
+
+    int i, j;
+    for (j = 0; j < rhs.getLength(); j++)
+    {
+        if (0 == rhs.head[j])
+        {
+            continue;
+        }
+
+        for (i = 0; i < lhs.getLength(); i++)
+        {
+            tmp = static_cast<d_base>(lhs.head[i]) * static_cast<d_base>(rhs.head[j]) +
+                static_cast<d_base>(result.head[i + j]) + carry;
+            result.head[i + j] = static_cast<base>(tmp);
+            carry = tmp >> sizeof(base) * 8;
+        }
+        result.head[i + j] = carry;
+        carry = 0;
+    }
+    result.compress();
+    return result;
+}
+
+Big operator/(Big &lhs, Big &rhs)
+{
+    Big remainder;
+    return div(lhs, rhs, remainder);
+}
+
+Big operator%(Big &lhs, Big &rhs)
+{
+    Big remainder;
+
+    div(lhs, rhs, remainder);
+    return remainder;
+}
+
+Big& Big::operator=(const Big &rhs)
+{
+    if (getCapacity() < rhs.getCapacity()) {
+        resize(rhs.getCapacity());
+    }
+
+    tail = head;
+    int length = rhs.getLength();
+
+    for (int i = 0; i < length; i++)
+    {
+        head[i] = rhs.head[i];
+        tail++;
+    }
+    tail--;
+    return *this;
+}
+
+Big& Big::operator=(int rhs)
+{
+    if (getCapacity() < 1)
+    {
+        resize(1);
+    }
+
+    tail = head;
+    head[0] = rhs;
+}
+
+std::istream &operator>>(std::istream &in, Big &rhs)
+{
+    int block = sizeof(base) * 2;//количество цифр F в числе
+    base tmp0, tmp1;
+    int index;
+    std::string string_for_num;
+    in >> string_for_num;
+    int string_length = string_for_num.length();
+    int n = (string_length) / block + !!((string_length) % (block));
+    if(n> rhs.getCapacity())
+    {
+        rhs.resize(n);
+    }
+
+    for(int k = 0; k < n; k++)
+    {
+        tmp0 = 0;
+        tmp1 = 0;
+        for(int i = 0; i< block; i++)
+        {
+            index = string_length - k * block - i -1;
+            if(index < 0)
+                break;
+            char symbol = string_for_num[index];
+            if (symbol >= '0' && symbol <= '9')
+            {
+                tmp1 = symbol - 48;
+            } else if (symbol >= 'a' && symbol <= 'f')
+            {
+                tmp1 = symbol - 87;  // 10 + symbol - 97;
+            } else if (symbol >= 'A' && symbol <= 'F')
+            {
+                tmp1 = symbol - 55;  // symbol + 10 - 65
+            } else
+            {
+                throw INCORRECT_SYMBOL;
+            }
+            tmp0 = tmp0 | (tmp1 << 4 * i);
+        }
+        rhs.head[k] = tmp0;
+        rhs.tail++;
+    }
+    rhs.tail--;
+    return in;
+}
+
+std::ostream &operator<<(std::ostream &out, Big &rhs)
 {
     int block = sizeof(base) * 2;  // *8/4 how many numbers in the "base"
-    int length = a.GetLength();
+    //int length = rhs.getLength();
     int mask = 0xF;
     char tmp;
     unsigned int flag = 1;
 
-    for (int i = a.GetLength() - 1; 0 <= i; i--) {  // starting from the older
-        for (int l = (block - 1) * 4; l >= 0; l -= 4) {
-            tmp = (a.al[i] & (mask << l)) >> l;  // get an each number from the block(one number - four bytes)
-            if (tmp >= 0 && tmp <= 9) {
-                if (flag && 0 == tmp) {
+    for (int i = rhs.getLength() - 1; 0 <= i; i--)  // starting from the older
+    {
+        for (int l = (block - 1) * 4; l >= 0; l -= 4)
+        {
+            tmp = (rhs.head[i] & (mask << l)) >> l;  // get an each number from the block(one number - four bytes)
+            if (tmp >= 0 && tmp <= 9)
+            {
+                if (flag && 0 == tmp)
+                {
                     continue;
                 }
                 flag = 0;
                 tmp = tmp + '0';
                 out << tmp;
-            } else if (tmp >= 0xA && tmp <= 0xF) {
-                tmp = tmp + 87;
-                out << tmp;
-                flag = 0;
-            } else
-                throw INCORRECT_SYMBOL;
-        }
+            }
+            else
+                if (tmp >= 0xA && tmp <= 0xF)
+                {
+                    tmp = tmp + 87;
+                    out << tmp;
+                    flag = 0;
+                }
+            else
+                {
+                    throw INCORRECT_SYMBOL;
+                }
+            }
     }
 
-    if (flag) {
+    if(flag)
+    {
         out << "0";
     }
     return out;
 }
 
-istream &operator>>(istream &in, Big &a)
+Big mulByKaratsuba(Big &lhs, Big &rhs)
 {
-    int block = sizeof(base) * 2;  // *8 / 4
-    base tmp_0, tmp_1;             // tmp 0 | tmp_1 -> al[i]
-    int index;
-    string string_for_num;
-    in >> string_for_num;
-    int length_s = string_for_num.length();
-    int n = (length_s) / block + !!((length_s) % (block));
-    if (n > a.GetCapacity()) {
-        a.Resize(n);
+    size_t lhsLen = lhs.getLength();
+    size_t rhsLen = rhs.getLength();
+
+//    int range = 50;
+//    if (lhsLen < range || rhsLen < range) {
+//        return lhs * rhs;
+//    }
+
+    size_t maxLen = std::max(lhsLen, rhsLen);
+    int sliceLen = maxLen / 2;
+    if(maxLen % 2 == 0) {
+        ++sliceLen;
     }
-    for (int k = 0; k < n; k++) {
-        tmp_0 = 0;
-        tmp_1 = 0;
-        for (int i = 0; i < block; i++) {
-            index = length_s - k * block - i - 1;
-            if (index < 0)  // control start of the string
-                break;
-            char symbol = string_for_num[index];
-            if (symbol >= '0' && symbol <= '9') {
-                tmp_1 = symbol - 48;
-            } else if (symbol >= 'a' && symbol <= 'f') {
-                tmp_1 = symbol - 87;  // 10 + symbol - 97;
-            } else if (symbol >= 'A' && symbol <= 'F') {
-                tmp_1 = symbol - 55;  // symbol + 10 - 65
-            } else
-                throw INCORRECT_SYMBOL;
-            tmp_0 = tmp_0 | (tmp_1 << 4 * i);
+
+    Big lhsLow, lhsHigh, rhsLow, rhsHigh;
+
+    auto makeSlices = [sliceLen](const Big &num, Big &numLow, Big &numHigh, size_t &numLen) {
+        if(sliceLen < numLen) {
+            numLow.head = num.head;
+            numLow.tail = &num.head[sliceLen - 1];
+
+            numHigh.head = &num.head[sliceLen];
+            numHigh.tail = num.tail;
+        } else {
+            numLow.head = num.head;
+            numLow.tail = num.tail;
+
+            numHigh = 0;
         }
-        a.al[k] = tmp_0;
-        a.ar++;  // changing right range
-    }
-    a.ar--;
-    return in;
+    };
+
+    makeSlices(lhs, lhsLow, lhsHigh, lhsLen);
+    makeSlices(rhs, rhsLow, rhsHigh, rhsLen);
+
+    Big resLow{maxLen};
+    Big resMiddle{maxLen};
+    Big resHigh{maxLen};
+    Big res{lhsLen + rhsLen};
+
+
+//    resLow = mulByKaratsuba(lhsLow, rhsLow);
+//    resHigh = mulByKaratsuba(lhsHigh,rhsHigh);
+    resLow = lhsLow * rhsLow;
+    resHigh = lhsHigh * rhsHigh;
+
+//    resMiddle = mulByKaratsuba(lhsLow + rhsHigh, lhsHigh + rhsLow);
+//  костыль, тк нормально не складывает
+    Big tmp1, tmp2;
+    tmp1 = lhsLow + lhsHigh;
+    tmp2 = rhsHigh + rhsLow;
+//    resMiddle = mulByKaratsuba(tmp1, tmp2);
+    resMiddle = tmp1 * tmp2;
+
+
+    resMiddle = resMiddle - resLow;
+    resMiddle = resMiddle - resHigh;
+
+    resHigh.shiftLeft(sliceLen * 2);
+    resMiddle.shiftLeft(sliceLen);
+//    res = resHigh + resMiddle + resLow;
+//  костыль, тк нормально не складывает
+    res = resHigh + resMiddle;
+    res = res + resLow;
+
+
+    lhsLow.head = nullptr;
+    lhsHigh.head = nullptr;
+    rhsLow.head = nullptr;
+    rhsHigh.head = nullptr;
+
+    return res;
 }
+
+void Big::shiftLeft(int amount)
+{
+    if(this->getCapacity() < this->getLength() + amount)
+    {
+        std::cout << "error";
+    }
+
+    for(int i = this->getLength(); i > 0; i--)
+    {
+        this->head[i + amount -1] = this->head[i - 1];
+    }
+
+    for(int i = amount-1; i >= 0; i--)
+    {
+        this->head[i] = 0;
+        this->tail++;
+    }
+}
+

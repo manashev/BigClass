@@ -1,63 +1,136 @@
 #pragma once
 #include <iostream>
 #include <cstring>
-using namespace std;
+
+typedef unsigned int base;
+typedef unsigned long long d_base;
 
 typedef int BigError;
-typedef unsigned int base;
-typedef unsigned long long doubleBase;
-
 namespace BigErrors {
 static const BigError OK = 0;
 static const BigError INCORRECT_SYMBOL = 1;
 static const BigError INCOMPATIBLE_OPERANDS = 2;
 static const BigError DIV_ZERO = 3;
-};  // namespace BigErrors
+}
+
+//class Big {
+//public:
+//    Big();
+//    Big(size_t capacity);
+//    Big(const Big &rhs);
+//    ~Big();
+//
+//    Big &operator =(const Big &rhs);
+//    Big &operator =(int rhs);
+//
+//
+//    int getCapacity() const;
+//    int getLength() const;
+//    int rand(int bound);
+//    void compress();
+//    void shiftLeft(int amount);
+//
+//
+//    friend int compare(const Big &lhs, const Big &rhs);
+//    friend int compareWithZero(const Big &rhs);
+//    friend bool operator>(Big &lhs, Big &rhs);
+//    friend bool operator<(Big &lhs, Big &rhs);
+//    friend bool operator>=(Big &lhs, Big &rhs);
+//    friend bool operator<=(Big &lhs, Big &rhs);
+//    friend bool operator==(Big &lhs, Big &rhs);
+//
+//
+//    friend Big operator+(Big &lhs, Big &rhs);
+//    friend Big operator-(Big &lhs, Big &rhs);
+//    friend Big operator*(Big &lhs, Big &rhs);
+//    friend Big operator/(Big &lhs, Big &rhs);
+//    friend Big operator%(Big &lhs, Big &rhs);
+//
+//
+//    Big mulBase(base rhs);
+//    friend Big mulByKaratsuba(Big &lhs, Big &rhs);
+//
+//    Big divBase(base rhs, base &remainder);
+//    friend Big div(Big &e, Big &c, Big &remainder);
+//
+//    void pow(Big &y, Big &mod);
+//
+//
+//    friend std::istream &operator >> (std::istream &in, Big &rhs);
+//    friend std::ostream &operator << (std::ostream &out, Big &rhs);
+//
+//private:
+//    Big(base* newHead, base* newTail);
+//    void resize(int newCapacity);
+//
+//    base *head;
+//    base *tail;
+//    base *alloc;
+//};
 
 class Big {
 public:
-    base *al;  //в начале всегда
-    base *ar;
-    base *ah;  // range of allocation memory
-
+    enum struct Comp {
+        LeftGreater,
+        Equal,
+        RightGreater
+    };
+    enum struct BigError {
+        OK,
+        INCORRECT_SYMBOL,
+        INCOMPATIBLE_OPERANDS,
+        DIV_ZERO
+    };
     Big();
+    Big(size_t capacity);
+    Big(const Big &rhs);
     ~Big();
-    Big(const Big &);
 
-    int Rand(int bound);
-    int GetCapacity() const;
-    int GetLength() const;
-    void Resize(int);  //количество блоков
-    void Compress();
-    Big Mul(base);
-    Big Div(base, base &);
-    friend int Compare(const Big &b, const Big &a);
-    friend int CompareWithZero(const Big &b);
-    friend int CompareWithConst(const Big &b, base a);
-    friend Big Substraction(Big &b, Big &a, int &flag);
-    friend Big Division(Big &, Big &, Big &);
-    friend Big Degree(Big &x, Big &y, Big &mod);
-    friend Big GetZForBurretReduction(Big &mod);
-    friend Big BurretReduction(Big &x, Big &mod, Big &z);
-    friend Big Karatsuba(Big &u, Big &v);
-    friend bool MillerRabin(Big &n, int t);
+    Big& operator =(const Big &rhs);
+    Big& operator =(int rhs);
 
-    Big &operator=(const Big &a);  // this = a
-    Big &operator=(base a);
-    Big &operator=(doubleBase a);
-    friend Big operator+(Big &a, Big &b);
-    friend Big operator-(Big &a, Big &b);  // b-a
-    friend Big operator*(Big &a, Big &b);
-    friend Big operator/(Big &a, Big &b);
-    friend Big operator%(Big &a, Big &b);
 
-    friend bool operator>(Big &a, Big &b);
-    friend bool operator<(Big &a, Big &b);
-    friend bool operator>=(Big &a, Big &b);
-    friend bool operator<=(Big &a, Big &b);
-    friend bool operator==(Big &a, Big &b);
-    friend bool operator!=(Big &a, Big &b);
+    size_t getCapacity() const;
+    size_t getLength() const;
+    void rand(int bound);
+    void compress();
+    void shiftLeft(int amount);
 
-    friend istream &operator>>(istream &in, Big &a);
-    friend ostream &operator<<(ostream &out, Big &a);
+
+    friend int compare(const Big &lhs, const Big &rhs);
+    friend int compareWithZero(const Big &rhs);
+    friend bool operator>(Big &lhs, Big &rhs);
+    friend bool operator<(Big &lhs, Big &rhs);
+    friend bool operator>=(Big &lhs, Big &rhs);
+    friend bool operator<=(Big &lhs, Big &rhs);
+    friend bool operator==(Big &lhs, Big &rhs);
+
+
+    friend Big operator+(Big &lhs, Big &rhs);
+    friend Big operator-(Big &lhs, Big &rhs);
+    friend Big operator*(Big &lhs, Big &rhs);
+    friend Big operator/(Big &lhs, Big &rhs);
+    friend Big operator%(Big &lhs, Big &rhs);
+
+
+    Big mulBase(base rhs);
+    friend Big mulByKaratsuba(Big &lhs, Big &rhs);
+
+    Big divBase(base rhs, base &remainder);
+    friend Big div(Big &e, Big &c, Big &remainder);
+
+    void pow(Big &y, Big &mod);
+
+
+    friend std::istream &operator >> (std::istream &in, Big &rhs);
+    friend std::ostream &operator << (std::ostream &out, Big &rhs);
+
+private:
+    Big(base* newHead, base* newTail);
+    void resize(int newCapacity);
+
+    base *head;
+    base *tail;
+    base *alloc;
 };
+
