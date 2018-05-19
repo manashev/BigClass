@@ -2,37 +2,11 @@
 
 using namespace BigErrors;
 
-/*
-head - указатель на начало числа
-tail - указатель на конец числа
-alloc - количество выделенной памяти
-length - мощность - количество блоков
-capacity - емкость, количество выделенной памяти
-*/
-unsigned int nlz(base x)
-{
-    unsigned int result = sizeof(base) * 8, sdwig = sizeof(base) * 8 / 2, add = sdwig;
-    while (add > 0)
-    {
-        if((x>>sdwig) == 0)
-        {
-            result -= add; x <<= add;
-//            std::cout << "x >>" << sdwig << " = 0  " << "  result = " << result;
-        }
-        add /= 2;
-        sdwig += add;
-
-//        std::cout << "   add = " << add << "   sdwig = " << sdwig << std::endl;
-    }
-//    std::cout << std::endl << "result = " << result;
-    return result;
-}
-
 Big::Big()
 {
-    head = new base[100];
+    head = new base[1];
     tail = head;
-    alloc= head + 100 - 1;
+    alloc= head;
 }
 
 Big::~Big()
@@ -435,7 +409,31 @@ Big div(Big &e, Big &c, Big &remainder)
     return q;
 }
 
-void Big::pow(Big &degree, Big &modulo)
+Big Big::getBarrettNum(Big &mod)
+{
+    int modLen = mod.getLength();
+    Big res{modLen * 2 + 1};
+
+    for (int i = 0; i < modLen; i++) {
+        res.head[i] = 0;
+    }
+    res.head[modLen] = 1;
+    res.tail = res.head + modLen;
+    res = res / mod;
+
+    return res;
+}
+
+void Big::moduloByBarrett(Big &mod, Big &barrettNum)
+{
+    if (*this < mod) {
+        return;
+    }
+
+
+}
+
+void Big::pow(Big &degree, Big &mod)
 {
 //    Big z{(degree.head[0] & 1)? (*this) : (static_cast<base>(1))};
     Big q{*this};
@@ -453,10 +451,10 @@ void Big::pow(Big &degree, Big &modulo)
     for(int i = 0; i < degreeLen; ++i) {
         for(; j < bits; ++j) {
             q = q * q;
-            q = q % modulo;
+            q = q % mod;
             if (degree.head[i] & (1 << j)) {
                 z = z * q;
-                z = z % modulo;
+                z = z % mod;
             }
         }
         j = 0;

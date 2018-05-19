@@ -13,6 +13,14 @@ static const BigError INCOMPATIBLE_OPERANDS = 2;
 static const BigError DIV_ZERO = 3;
 }
 
+/*
+head - указатель на начало числа
+tail - указатель на конец числа
+alloc - количество выделенной памяти
+length - мощность - количество блоков
+capacity - емкость, количество выделенной памяти
+*/
+
 class Big {
 public:
     Big();
@@ -39,8 +47,7 @@ public:
     friend bool operator<=(Big &lhs, Big &rhs);
     friend bool operator==(Big &lhs, Big &rhs);
     friend bool operator!=(Big &lhs, Big &rhs);
-
-
+    
 
     friend Big operator+(Big &lhs, Big &rhs);
     friend Big operator-(Big &lhs, Big &rhs);
@@ -54,8 +61,10 @@ public:
 
     Big divBase(base rhs, base &remainder);
     friend Big div(Big &e, Big &c, Big &remainder);
+    void moduloByBarrett(Big &mod, Big &barretNum);
+    Big getBarrettNum(Big &mod);
 
-    void pow(Big &degree, Big &modulo);
+    void pow(Big &degree, Big &mod);
 
 
     friend std::istream &operator >> (std::istream &in, Big &rhs);

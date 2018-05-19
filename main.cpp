@@ -7,10 +7,10 @@ using std::endl;
 
 /*
  * возведение в степень
- * приведение по модулю баррет
  * карацуба
+ * приведение по модулю баррет
  * тест миллера рабина
- * генератор простого вход длина в битах
+ * генератор простого (вход - длина в битах)
  */
 
 
@@ -84,16 +84,16 @@ bool testKaratsuba(int count, int sizeRange, bool isFixedSize)
 
         num1.rand(n);
         num2.rand(m);
-
         auto begin = std::chrono::high_resolution_clock::now();
-        resKaratsuba = mulByKaratsuba(num1, num2);
+        resBasic = num1 * num2;
         auto end = std::chrono::high_resolution_clock::now();
-        karatsubaTime += end - begin;
+        basicTime += end - begin;
 
         begin = std::chrono::high_resolution_clock::now();
-        resBasic = num1 * num2;
+        resKaratsuba = mulByKaratsuba(num1, num2);
         end = std::chrono::high_resolution_clock::now();
-        basicTime += end - begin;
+        karatsubaTime += end - begin;
+
 
         if (resBasic != resKaratsuba) {
             cout << endl;
@@ -129,7 +129,7 @@ bool testPow(int count, int sizeRange, bool isFixedSize)
             n = m = sizeRange;
         } else {
             n = 1 + rand() % sizeRange;
-            m = 1 + rand() % sizeRange / 10;
+            m = 1 + rand() % sizeRange;
         }
         m = 2;
         x.rand(n);
@@ -159,22 +159,27 @@ bool testPow(int count, int sizeRange, bool isFixedSize)
     cout << endl;
     cout << "   Количество тестов: " << count << endl;
     cout << "   Максимальная длина числа: " << sizeRange << endl;
-    cout << "Тестирование класса Big завершено" << endl;
+    cout << "Тестирование pow() завершено" << endl;
     return true;
 }
 
 int main()
 {
+    int testCount = 10;
+    int numSizeRange = 10000;
+    bool isFixedSize = true;
 //    srand(time(NULL));
 
-    testPow(1000, 100, false);
+//    testBig(testCount, numSizeRange, isFixedSize);
+//    testKaratsuba(testCount, numSizeRange, isFixedSize);
+//    testPow(testCount, numSizeRange, isFixedSize);
 
-//    if(testBig(1000, 1000, false) &&
-//       testKaratsuba(1000, 1000, true)) {
+//    if (testBig(testCount, numSizeRange, isFixedSize) &&
+//        testKaratsuba(testCount, numSizeRange, isFixedSize) &&
+//        testPow(testCount, numSizeRange, isFixedSize)) {
+//
 //        cout << endl << "Все тесты пройдены!" << endl;
 //    } else {
 //        cout << endl << "Тесты не пройдены!" << endl;
-//
 //    }
-
 }
