@@ -1,6 +1,7 @@
 #include <iostream>
 #include "big.h"
 #include <chrono>
+#include <utility>
 
 using std::cout;
 using std::endl;
@@ -16,7 +17,8 @@ using std::endl;
 
 bool testBig(int count, int sizeRange, bool isFixedSize)
 {
-    cout << "Выполняется тестирование основных операций (+, -, *, /, %, ==, <) класса Big" << endl;
+    cout << "----------------------------------------------------------------------------" << endl;
+    cout << "Начато тестирование основных операций (+, -, *, /, %, ==, <) класса Big" << endl;
     Big A, B, C, D, res1, res2, res3;
     int n, m;
 
@@ -56,24 +58,27 @@ bool testBig(int count, int sizeRange, bool isFixedSize)
             cout << "       res3 = B * C:     " << res2<< std::endl;
             return false;
         }
-        if (i % count / 10 == 0) {
-            cout << "   Пройдено тестов: " << i + 1 << endl;
+        if (i % (count / 10) == 0) {
+            cout << "   Пройдено тестов: " << i << endl;
         }
     }
     cout << endl;
     cout << "   Количество тестов: " << count << endl;
     cout << "   Максимальная длина числа: " << sizeRange << endl;
-    cout << "Тестирование класса Big завершено" << endl;
+    cout << "Завершено тестирование класса Big" << endl;
+    cout << "----------------------------------------------------------------------------" << endl << endl;
     return true;
 }
 
 bool testKaratsuba(int count, int sizeRange, bool isFixedSize)
 {
-    cout << "Выполняется тестирование mulByKaratsuba()" << endl;
+    cout << "----------------------------------------------------------------------------" << endl;
+    cout << "Начато тестирование mulByKaratsuba()" << endl;
     Big num1, num2, resKaratsuba, resBasic;
     int n, m;
     std::chrono::duration<double> karatsubaTime {0};
     std::chrono::duration<double> basicTime{0};
+
     for(int i = 0; i < count; ++i) {
         if (isFixedSize) {
             n = m = sizeRange;
@@ -104,8 +109,8 @@ bool testKaratsuba(int count, int sizeRange, bool isFixedSize)
             cout << "       karatsuba: " << resKaratsuba << endl;
             return false;
         }
-        if(i % count/10 == 0) {
-            cout << "   Пройдено тестов: " << i + 1 << endl;
+        if(i % (count / 10) == 0) {
+            cout << "   Пройдено тестов: " << i << endl;
         }
     }
     cout << endl;
@@ -114,13 +119,15 @@ bool testKaratsuba(int count, int sizeRange, bool isFixedSize)
     cout << "   Karatsuba: " << karatsubaTime.count() << endl;
     cout << "   Basic:     " << basicTime.count() << endl;
     cout << endl;
-    cout << "Тестирование mulByKaratsuba() завершено" << endl;
+    cout << "Завершено тестирование mulByKaratsuba()" << endl;
+    cout << "----------------------------------------------------------------------------" << endl << endl;
     return true;
 }
 
 bool testPow(int count, int sizeRange, bool isFixedSize)
 {
-    cout << "Выполняется тестирование pow()" << endl;
+    cout << "----------------------------------------------------------------------------" << endl;
+    cout << "Начато тестирование pow()" << endl;
     Big x, y, mod, res;
     int n, m;
 
@@ -129,9 +136,9 @@ bool testPow(int count, int sizeRange, bool isFixedSize)
             n = m = sizeRange;
         } else {
             n = 1 + rand() % sizeRange;
-            m = 1 + rand() % sizeRange;
+            m = 1 + rand() % (sizeRange / 10);
         }
-        m = 2;
+        m = 1;
         x.rand(n);
         y.rand(m);
         mod.rand(sizeRange);
@@ -152,34 +159,99 @@ bool testPow(int count, int sizeRange, bool isFixedSize)
             cout << "       res1: " << res << std::endl;
             return false;
         }
-        if (i % count / 10 == 0) {
-            cout << "   Пройдено тестов: " << i + 1 << endl;
+        if (i % (count / 10) == 0) {
+            cout << "   Пройдено тестов: " << i << endl;
         }
     }
     cout << endl;
     cout << "   Количество тестов: " << count << endl;
     cout << "   Максимальная длина числа: " << sizeRange << endl;
-    cout << "Тестирование pow() завершено" << endl;
+    cout << "Завершено тестирование pow()" << endl;
+    cout << "----------------------------------------------------------------------------" << endl << endl;
     return true;
 }
 
+bool testBarrett(int count, int sizeRange, bool isFixedSize)
+{
+    cout << "----------------------------------------------------------------------------" << endl;
+    cout << "Начато тестирование moduloByBarrett()" << endl;
+    Big x, mod, barrettNum, resBarrett, resBasic;
+    int n, m;
+    std::chrono::duration<double> barrettTime {0};
+    std::chrono::duration<double> basicTime{0};
+
+    for(int i = 0; i < count; ++i) {
+        if (isFixedSize) {
+            n = m = sizeRange;
+        } else {
+            n = 1 + rand() % sizeRange;
+            m = 1 + rand() % sizeRange;
+        }
+        if(n < m) {
+            int buf = n;
+            n = m;
+            m = buf;
+        }
+        x.rand(n);
+        mod.rand(m);
+
+        barrettNum = getBarrettNum(mod);
+
+        auto begin = std::chrono::high_resolution_clock::now();
+        resBarrett = x.moduloByBarrett(mod, barrettNum);
+        auto end = std::chrono::high_resolution_clock::now();
+        barrettTime += end - begin;
+
+        begin = std::chrono::high_resolution_clock::now();
+        resBasic = x % mod;
+        end = std::chrono::high_resolution_clock::now();
+        basicTime += end - begin;
+
+        if (resBarrett != resBasic ) {
+            cout << endl;
+            cout << "   Ошибка на тесте #" << i + 1<< endl;
+            cout << "       x:          " << x << std::endl;
+            cout << "       mod         " << mod << std::endl;
+            cout << "       barrettNum: " << barrettNum << std::endl;
+            cout << "       barrett:    " << resBarrett << std::endl;
+            cout << "       basic:      " << resBasic << std::endl;
+            return false;
+        }
+        if (i % (count / 10) == 0) {
+            cout << "   Пройдено тестов: " << i << endl;
+        }
+    }
+    cout << endl;
+    cout << "   Количество тестов: " << count << endl;
+    cout << "   Максимальная длина числа: " << sizeRange << endl;
+    cout << "   Barrett: " << barrettTime.count() << endl;
+    cout << "   Basic:   " << basicTime.count() << endl;
+    cout << endl;
+    cout << "Завершено тестирование moduloByBarrett()" << endl;
+    cout << "----------------------------------------------------------------------------" << endl << endl;
+    return true;
+}
+
+
 int main()
 {
-    int testCount = 10;
-    int numSizeRange = 10000;
-    bool isFixedSize = true;
+    int testCount = 1000;
+    int numSizeRange = 1000;
+    bool isFixedSize = false;
 //    srand(time(NULL));
 
 //    testBig(testCount, numSizeRange, isFixedSize);
 //    testKaratsuba(testCount, numSizeRange, isFixedSize);
 //    testPow(testCount, numSizeRange, isFixedSize);
+//    testBarrett(testCount, numSizeRange, isFixedSize);
 
-//    if (testBig(testCount, numSizeRange, isFixedSize) &&
-//        testKaratsuba(testCount, numSizeRange, isFixedSize) &&
-//        testPow(testCount, numSizeRange, isFixedSize)) {
-//
-//        cout << endl << "Все тесты пройдены!" << endl;
-//    } else {
-//        cout << endl << "Тесты не пройдены!" << endl;
-//    }
+
+    if (testBig(testCount, numSizeRange, isFixedSize) &&
+        testKaratsuba(testCount, numSizeRange, isFixedSize) &&
+        testPow(testCount, numSizeRange, isFixedSize)) {
+
+        cout << endl << "Все тесты пройдены!" << endl;
+    } else {
+        cout << endl << "Тесты не пройдены!" << endl;
+    }
 }
