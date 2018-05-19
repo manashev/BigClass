@@ -9,14 +9,6 @@ Big::Big()
     alloc= head;
 }
 
-Big::~Big()
-{
-    if(head) {
-        delete[] head;
-        head = nullptr;
-    }
-}
-
 Big::Big(int capacity)
 {
     head = new base[capacity];
@@ -39,18 +31,53 @@ Big::Big(const Big &rhs)
     tail--;
 }
 
+Big::~Big()
+{
+    if(head) {
+        delete[] head;
+        head = nullptr;
+    }
+}
+
+Big& Big::operator=(const Big &rhs)
+{
+    if (getCapacity() < rhs.getCapacity()) {
+        resize(rhs.getCapacity());
+    }
+
+    tail = head;
+    int length = rhs.getLength();
+
+    for (int i = 0; i < length; i++)
+    {
+        head[i] = rhs.head[i];
+        tail++;
+    }
+    tail--;
+    return *this;
+}
+
+Big& Big::operator=(int rhs)
+{
+    if (getCapacity() < 1)
+    {
+        resize(1);
+    }
+
+    tail = head;
+    head[0] = rhs;
+
+    return *this;
+}
+
 void Big::resize(int newCapacity)
 {
-    if(getCapacity() < newCapacity)
-    {
-        if(head)
-        {
-            delete[] head;
-        }
-        head = new base[newCapacity];
-        tail = head;
-        alloc = head + newCapacity - 1;
+    if(head) {
+        delete[] head;
     }
+    head = new base[newCapacity];
+    tail = head;
+    alloc = head + newCapacity - 1;
 }
 
 int Big::getCapacity() const
@@ -409,7 +436,7 @@ Big div(Big &e, Big &c, Big &remainder)
     return q;
 }
 
-Big Big::getBarrettNum(Big &mod)
+Big getBarrettNum(Big &mod)
 {
     int modLen = mod.getLength();
     Big res{modLen * 2 + 1};
@@ -424,14 +451,134 @@ Big Big::getBarrettNum(Big &mod)
     return res;
 }
 
-void Big::moduloByBarrett(Big &mod, Big &barrettNum)
+Big Big::moduloByBarrett(Big &mod, Big &barrettNum)
 {
     if (*this < mod) {
-        return;
+        return *this;
+    }
+    int modLen = mod.getLength();
+
+    Big q{getLength() * modLen * 2 + 1};
+
+    // q = [ x / (B^(k - 1)) ]
+    for (int i = 0, j = modLen - 1; j < getLength(); ++i, ++j) {
+        q.head[i] = head[j];
+    }
+    q.tail = q.head + getLength() - modLen;
+
+    //q = [ [ x / (B^(k - 1)) ] * z ]
+    q = q * barrettNum;
+
+    //q = [ [ x / (B^(k - 1)) ] * z / (B^(k + 1)) ]
+    int qLen = q.getLength();
+    for (int i = 0, j = modLen + 1; j < qLen; ++i, ++j) {
+        q.head[i] = q.head[j];
+    }
+    q.tail = q.head + qLen - (modLen + 2);
+
+    Big r1{modLen + 1};
+    Big r2{modLen + 1};
+    Big res{};
+
+    // r1 = x % B^(k + 1)
+    for (int i = 0; i < modLen + 1; ++i) {
+        r1.head[i] = head[i];
+    }
+    r1.tail = r1.head + modLen + 1; // ???????
+
+
+    // r2 = q * mod % B^(k + 1)
+    r2 = q * mod;
+    for (int i = 0; i < modLen + 1; ++i) {
+        r2.head[i] = head[i];
+    }
+    r2.tail = r2.head + modLen + 1; // ???????
+
+    res  = r1 - r2;
+    if(r1 < r2) {
+        // one_at_k_plus_1 = B^(k + 1)
+        Big one_at_k_plus_1{modLen + 2};
+
+        for (int i = 0; i < modLen + 1; i++) {
+            res.head[i] = 0;
+        }
+        res.head[modLen + 1] = 1;
+        res.tail = res.head + modLen;
+
+        res = res + one_at_k_plus_1;
     }
 
-
+    while(res >= mod) {
+        res = res - mod;
+    }
+    return res;
 }
+
+/*
+ Big BurretReduction(Big &x, Big &mod, Big &z)
+{
+    Big q, r1, r2, r_dash, glass;
+
+    if (x < mod) {
+        return x;
+    }
+
+    int k = mod.GetLength();
+
+    r1.Resize(k + 1);
+    r2.Resize(k + 1);
+    q.Resize(x.GetLength() * 2 * k + 1);
+
+    // q = x/bk_1
+    int i, j;
+    for (i = k - 1, j = 0; i < x.GetLength(); i++, j++) {
+        q.al[j] = x.al[i];
+    }
+    q.ar = q.ar + x.GetLength() - k;
+
+    glass = q * z;
+
+    //  q = q / bk1;
+    for (i = k + 1, j = 0; i < glass.GetLength(); i++, j++) {
+        q.al[j] = glass.al[i];
+    }
+    q.ar = q.al + glass.GetLength() - (k + 2);
+
+    // r1 = x % bk1;
+    r1.ar = r1.al;
+    for (i = 0; i < k + 1 && i < x.GetLength(); i++) {
+        r1.al[i] = x.al[i];
+        r1.ar++;
+    }
+    r1.ar--;
+
+    glass = q * mod;
+
+    // r2 = glass % bk1;
+    r2.ar = r2.al;
+    for (i = 0; i < k + 1 && i < glass.GetLength(); i++) {
+        r2.al[i] = glass.al[i];
+        r2.ar++;
+    }
+    r2.ar--;
+
+    if (r1 >= r2) {
+        r_dash = r1 - r2;
+    } else {
+        r_dash.al[k + 1] = 1;
+        for (int i = r_dash.GetLength(); i < k + 1; i++) {
+            r_dash.al[i] = 0;
+        }
+        r_dash.ar = r_dash.al + k + 1;
+        r_dash = r_dash - r2;
+    }
+
+    while (r_dash >= mod) {
+        r_dash = r_dash - mod;
+    }
+    return r_dash;
+}
+ */
 
 void Big::pow(Big &degree, Big &mod)
 {
@@ -462,13 +609,13 @@ void Big::pow(Big &degree, Big &mod)
     *this = z;
 }
 
-Big operator+(Big &lhs, Big &rhs)
+Big Big::operator+(Big &rhs)
 {
     d_base tmp;
     d_base mask = static_cast<d_base>(1) << (sizeof(base) * 8);
     int carry = 0;
     int BLength = rhs.getLength();
-    int ALength = lhs.getLength();
+    int ALength = getLength();
     int LessLength;
     int rcapacity,i;
     Big result{ALength + BLength + 1};
@@ -478,13 +625,13 @@ Big operator+(Big &lhs, Big &rhs)
     else
         LessLength = BLength;
 
-    if(lhs.getCapacity() <= rhs.getCapacity())
+    if(getCapacity() <= rhs.getCapacity())
     {
         rcapacity = rhs.getCapacity();
     }
     else
     {
-        rcapacity = lhs.getCapacity();
+        rcapacity = getCapacity();
     }
 
     if(rcapacity + 1 > result.getCapacity())
@@ -497,7 +644,7 @@ Big operator+(Big &lhs, Big &rhs)
     for (i = 0; i < LessLength; i++)
     {
         tmp = static_cast<d_base>(rhs.head[i]) +
-                static_cast<d_base>(lhs.head[i]) + carry;
+                static_cast<d_base>(head[i]) + carry;
         result.head[i] = tmp % mask;
         carry = !!(tmp / mask);
         result.tail++;
@@ -507,7 +654,7 @@ Big operator+(Big &lhs, Big &rhs)
     {
         for(; i < ALength; i++)
         {
-            tmp = lhs.head[i] + carry;
+            tmp = head[i] + carry;
             result.head[i] = tmp % mask;
             result.tail++;
             carry = !!(tmp / mask);
@@ -534,9 +681,9 @@ Big operator+(Big &lhs, Big &rhs)
     return result;
 }
 
-Big operator-(Big& lhs, Big& rhs)
+Big Big::operator-(Big& rhs)
 {
-    int flag = compare(lhs, rhs);
+    int flag = compare(*this, rhs);
     if(-1 == flag)
     {
         std::cout << "invalid operation" << std::endl;
@@ -544,7 +691,7 @@ Big operator-(Big& lhs, Big& rhs)
     }
 
     Big result;
-    result.resize(lhs.getCapacity());
+    result.resize(getCapacity());
     result.tail = result.head;
 
     if(0 == flag)
@@ -564,41 +711,41 @@ Big operator-(Big& lhs, Big& rhs)
         tmp0 = static_cast<d_base>(rhs.head[i]) + static_cast<d_base>(carry);
         carry = 0;
 
-        if (static_cast<d_base>(lhs.head[i]) < tmp0)
+        if (static_cast<d_base>(head[i]) < tmp0)
         {
             given = 1;
         }
 
         if (given) {
-            tmp1 = static_cast<d_base>(lhs.head[i]) + mask - tmp0;
+            tmp1 = static_cast<d_base>(head[i]) + mask - tmp0;
             result.head[i] = static_cast<base>(tmp1);
             carry = 1;
             given = 0;
         }
 
         else {
-            result.head[i] = lhs.head[i] - static_cast<base>(tmp0);
+            result.head[i] = head[i] - static_cast<base>(tmp0);
         }
     }
 
-    for (i; i < lhs.getLength(); i++)
+    for (i; i < getLength(); i++)
     {
         result.tail++;
         tmp0 = carry;
         carry = 0;
-        if (static_cast<d_base>(lhs.head[i]) < tmp0)
+        if (static_cast<d_base>(head[i]) < tmp0)
         {
             given = 1;
         }
 
         if (given) {
-            tmp1 = static_cast<d_base>(lhs.head[i]) + mask - static_cast<d_base>(tmp0);
+            tmp1 = static_cast<d_base>(head[i]) + mask - static_cast<d_base>(tmp0);
             result.head[i] = tmp1;
             carry = 1;
             given = 0;
         }
         else {
-            result.head[i] = static_cast<d_base>(lhs.head[i]) - static_cast<d_base>(tmp0);
+            result.head[i] = static_cast<d_base>(head[i]) - static_cast<d_base>(tmp0);
         }
     }
     result.tail--;
@@ -606,15 +753,15 @@ Big operator-(Big& lhs, Big& rhs)
     return result;
 }
 
-Big operator*(Big& lhs, Big& rhs)
+Big Big::operator*(Big& rhs)
 {
     Big result;
     if (rhs.getLength() <= 1) {
-        result = lhs.mulBase(rhs.head[0]);
+        result = mulBase(rhs.head[0]);
         return result;
     }
 
-    result.resize(lhs.getLength() + rhs.getLength());
+    result.resize(getLength() + rhs.getLength());
 
     d_base mask = static_cast<d_base>(1) << (sizeof(base) * 8);
     d_base tmp, carry = 0;
@@ -634,9 +781,9 @@ Big operator*(Big& lhs, Big& rhs)
             continue;
         }
 
-        for (i = 0; i < lhs.getLength(); i++)
+        for (i = 0; i < getLength(); i++)
         {
-            tmp = static_cast<d_base>(lhs.head[i]) * static_cast<d_base>(rhs.head[j]) +
+            tmp = static_cast<d_base>(head[i]) * static_cast<d_base>(rhs.head[j]) +
                 static_cast<d_base>(result.head[i + j]) + carry;
             result.head[i + j] = static_cast<base>(tmp);
             carry = tmp >> sizeof(base) * 8;
@@ -648,49 +795,18 @@ Big operator*(Big& lhs, Big& rhs)
     return result;
 }
 
-Big operator/(Big &lhs, Big &rhs)
+Big Big::operator/(Big &rhs)
 {
     Big remainder;
-    return div(lhs, rhs, remainder);
+    return div(*this, rhs, remainder);
 }
 
-Big operator%(Big &lhs, Big &rhs)
+Big Big::operator%(Big &rhs)
 {
     Big remainder;
 
-    div(lhs, rhs, remainder);
+    div(*this, rhs, remainder);
     return remainder;
-}
-
-Big& Big::operator=(const Big &rhs)
-{
-    if (getCapacity() < rhs.getCapacity()) {
-        resize(rhs.getCapacity());
-    }
-
-    tail = head;
-    int length = rhs.getLength();
-
-    for (int i = 0; i < length; i++)
-    {
-        head[i] = rhs.head[i];
-        tail++;
-    }
-    tail--;
-    return *this;
-}
-
-Big& Big::operator=(int rhs)
-{
-    if (getCapacity() < 1)
-    {
-        resize(1);
-    }
-
-    tail = head;
-    head[0] = rhs;
-
-    return *this;
 }
 
 std::istream &operator>>(std::istream &in, Big &rhs)
@@ -827,29 +943,18 @@ Big mulByKaratsuba(Big &lhs, Big &rhs)
 
     resLow = mulByKaratsuba(lhsLow, rhsLow);
     resHigh = mulByKaratsuba(lhsHigh,rhsHigh);
-//    resLow = lhsLow * rhsLow;
-//    resHigh = lhsHigh * rhsHigh;
 
-//    resMiddle = mulByKaratsuba(lhsLow + rhsHigh, lhsHigh + rhsLow);
-//  костыль, тк нормально не складывает
     Big tmp1{sliceLen + 1};
     Big tmp2{sliceLen + 1};
     tmp1 = lhsLow + lhsHigh;
     tmp2 = rhsHigh + rhsLow;
-
     resMiddle = mulByKaratsuba(tmp1, tmp2);
-//    resMiddle = tmp1 * tmp2;
 
-
-    resMiddle = resMiddle - resLow;
-    resMiddle = resMiddle - resHigh;
+    resMiddle = resMiddle - resLow - resHigh;
 
     resHigh.shiftLeft(sliceLen * 2);
     resMiddle.shiftLeft(sliceLen);
-//    res = resHigh + resMiddle + resLow;
-//  костыль, тк нормально не складывает
-    res = resHigh + resLow;
-    res = res + resMiddle;
+    res = resHigh + resMiddle + resLow;
 
     //Очищение, тк ссылались на одну память
     lhsLow.head = nullptr;
@@ -862,20 +967,17 @@ Big mulByKaratsuba(Big &lhs, Big &rhs)
 
 void Big::shiftLeft(int amount)
 {
-    if(this->getCapacity() < this->getLength() + amount)
-    {
-        std::cout << "error";
+    if(getCapacity() < getLength() + amount) {
+        throw INCORRECT_AMOUNT;
     }
 
-    for(int i = this->getLength(); i > 0; i--)
-    {
-        this->head[i + amount -1] = this->head[i - 1];
+    for(int i = getLength(); i > 0; --i) {
+        head[i + amount - 1] = head[i - 1];
     }
 
-    for(int i = amount-1; i >= 0; i--)
-    {
-        this->head[i] = 0;
-        this->tail++;
+    for(int i = amount - 1; i >= 0; --i) {
+        head[i] = 0;
+        ++tail;
     }
 }
 

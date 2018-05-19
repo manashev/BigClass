@@ -11,6 +11,8 @@ static const BigError OK = 0;
 static const BigError INCORRECT_SYMBOL = 1;
 static const BigError INCOMPATIBLE_OPERANDS = 2;
 static const BigError DIV_ZERO = 3;
+static const BigError INCORRECT_AMOUNT = 4;
+
 }
 
 /*
@@ -47,13 +49,13 @@ public:
     friend bool operator<=(Big &lhs, Big &rhs);
     friend bool operator==(Big &lhs, Big &rhs);
     friend bool operator!=(Big &lhs, Big &rhs);
-    
 
-    friend Big operator+(Big &lhs, Big &rhs);
-    friend Big operator-(Big &lhs, Big &rhs);
-    friend Big operator*(Big &lhs, Big &rhs);
-    friend Big operator/(Big &lhs, Big &rhs);
-    friend Big operator%(Big &lhs, Big &rhs);
+
+    Big operator+(Big &rhs);
+    Big operator-(Big &rhs);
+    Big operator*(Big &rhs);
+    Big operator/(Big &rhs);
+    Big operator%(Big &rhs);
 
 
     Big mulBase(base rhs);
@@ -61,8 +63,8 @@ public:
 
     Big divBase(base rhs, base &remainder);
     friend Big div(Big &e, Big &c, Big &remainder);
-    void moduloByBarrett(Big &mod, Big &barretNum);
-    Big getBarrettNum(Big &mod);
+    Big moduloByBarrett(Big &mod, Big &barretNum);
+    friend Big getBarrettNum(Big &mod);
 
     void pow(Big &degree, Big &mod);
 
@@ -79,5 +81,4 @@ private:
 };
 
 Big mulByKaratsuba(Big &lhs, Big &rhs);
-Big Degree(Big &x, Big &y, Big &mod);
-
+Big getBarrettNum(Big &mod);
