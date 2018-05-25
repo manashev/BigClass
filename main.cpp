@@ -22,7 +22,7 @@ bool testBig(int count, int sizeRange, bool isFixedSize)
     Big A, B, C, D, res1, res2, res3;
     int n, m;
 
-    for(int i = 0; i < count; ++i) {
+    for(int i = 1; i <= count; ++i) {
         if (isFixedSize) {
             n = m = sizeRange;
         } else {
@@ -79,7 +79,7 @@ bool testKaratsuba(int count, int sizeRange, bool isFixedSize)
     std::chrono::duration<double> karatsubaTime {0};
     std::chrono::duration<double> basicTime{0};
 
-    for(int i = 0; i < count; ++i) {
+    for(int i = 1; i <= count; ++i) {
         if (isFixedSize) {
             n = m = sizeRange;
         } else {
@@ -131,7 +131,7 @@ bool testPow(int count, int sizeRange, bool isFixedSize)
     Big x, y, mod, res;
     int n, m;
 
-    for(int i = 0; i < count; ++i) {
+    for(int i = 1; i <= count; ++i) {
         if (isFixedSize) {
             n = m = sizeRange;
         } else {
@@ -177,15 +177,15 @@ bool testBarrett(int count, int sizeRange, bool isFixedSize)
     cout << "Начато тестирование moduloByBarrett()" << endl;
     Big x, mod, barrettNum, resBarrett, resBasic;
     int n, m;
-    std::chrono::duration<double> barrettTime {0};
+    std::chrono::duration<double> barrettTime{0};
     std::chrono::duration<double> basicTime{0};
 
-    for(int i = 0; i < count; ++i) {
+    for(int i = 1; i <= count; ++i) {
         if (isFixedSize) {
             n = m = sizeRange;
         } else {
             n = 1 + rand() % sizeRange;
-            m = 1 + rand() % sizeRange;
+            m = 2 + rand() % sizeRange;
         }
         if(n < m) {
             int buf = n;
@@ -207,7 +207,7 @@ bool testBarrett(int count, int sizeRange, bool isFixedSize)
         end = std::chrono::high_resolution_clock::now();
         basicTime += end - begin;
 
-        if (resBarrett != resBasic ) {
+        if (resBarrett != resBasic) {
             cout << endl;
             cout << "   Ошибка на тесте #" << i + 1<< endl;
             cout << "       x:          " << x << std::endl;
@@ -235,23 +235,13 @@ bool testBarrett(int count, int sizeRange, bool isFixedSize)
 
 int main()
 {
-    int testCount = 1000;
-    int numSizeRange = 1000;
-    bool isFixedSize = false;
-//    srand(time(NULL));
+    int testCount = 10;
+    int numSizeRange = 10000;
+    bool isFixedSize = true;
+    srand(time(NULL));
 
 //    testBig(testCount, numSizeRange, isFixedSize);
 //    testKaratsuba(testCount, numSizeRange, isFixedSize);
 //    testPow(testCount, numSizeRange, isFixedSize);
-//    testBarrett(testCount, numSizeRange, isFixedSize);
-
-
-    if (testBig(testCount, numSizeRange, isFixedSize) &&
-        testKaratsuba(testCount, numSizeRange, isFixedSize) &&
-        testPow(testCount, numSizeRange, isFixedSize)) {
-
-        cout << endl << "Все тесты пройдены!" << endl;
-    } else {
-        cout << endl << "Тесты не пройдены!" << endl;
-    }
+    testBarrett(testCount, numSizeRange, isFixedSize);
 }

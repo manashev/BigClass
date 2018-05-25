@@ -69,8 +69,8 @@ public:
     void pow(Big &degree, Big &mod);
 
 
-    friend std::istream &operator >> (std::istream &in, Big &rhs);
-    friend std::ostream &operator << (std::ostream &out, Big &rhs);
+    friend std::istream& operator >> (std::istream &in, Big &rhs);
+    friend std::ostream& operator << (std::ostream &out, Big &rhs);
 
 private:
     void resize(int newCapacity);

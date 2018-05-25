@@ -270,7 +270,7 @@ Big Big::divBase(base rhs, base &remainder)
         result.head[i] = 0;
     }
 
-    for (int i = getLength() - 1; 0 <= i; i--)
+    for(int i = getLength() - 1; 0 <= i; i--)
     {
         t = static_cast<d_base>(head[i]) + static_cast<d_base>(remainder) * mask;
         result.head[i] = static_cast<base>(t / rhs);
@@ -282,7 +282,6 @@ Big Big::divBase(base rhs, base &remainder)
 
 }
 
-// e/c
 Big div(Big &e, Big &c, Big &remainder)
 {
     Big a, b, result;
@@ -438,17 +437,16 @@ Big div(Big &e, Big &c, Big &remainder)
 
 Big getBarrettNum(Big &mod)
 {
-    int modLen = mod.getLength();
-    Big res{modLen * 2 + 1};
+    int resLen = mod.getLength() * 2;
+    Big res{resLen + 1};
 
-    for (int i = 0; i < modLen; i++) {
+    for (int i = 0; i < resLen; ++i) {
         res.head[i] = 0;
     }
-    res.head[modLen] = 1;
-    res.tail = res.head + modLen;
-    res = res / mod;
+    res.head[resLen] = 1;
+    res.tail = res.head + resLen;
 
-    return res;
+    return res / mod;
 }
 
 Big Big::moduloByBarrett(Big &mod, Big &barrettNum)
@@ -458,18 +456,18 @@ Big Big::moduloByBarrett(Big &mod, Big &barrettNum)
     }
     int modLen = mod.getLength();
 
-    Big q{getLength() * modLen * 2 + 1};
+    Big q{getLength() * modLen + 1};
 
     // q = [ x / (B^(k - 1)) ]
     for (int i = 0, j = modLen - 1; j < getLength(); ++i, ++j) {
         q.head[i] = head[j];
     }
-    q.tail = q.head + getLength() - modLen;
+    q.tail = q.tail + getLength() - modLen;
 
-    //q = [ [ x / (B^(k - 1)) ] * z ]
+    // q = [ q * z ]
     q = q * barrettNum;
 
-    //q = [ [ x / (B^(k - 1)) ] * z / (B^(k + 1)) ]
+    // q = [ q / (B^(k + 1)) ]
     int qLen = q.getLength();
     for (int i = 0, j = modLen + 1; j < qLen; ++i, ++j) {
         q.head[i] = q.head[j];
@@ -478,107 +476,48 @@ Big Big::moduloByBarrett(Big &mod, Big &barrettNum)
 
     Big r1{modLen + 1};
     Big r2{modLen + 1};
-    Big res{};
 
     // r1 = x % B^(k + 1)
-    for (int i = 0; i < modLen + 1; ++i) {
+    r1.tail = r1.head;
+    for (int i = 0; (i < modLen + 1) && (i < getLength()); i++) {
         r1.head[i] = head[i];
+        r1.tail++;
     }
-    r1.tail = r1.head + modLen + 1; // ???????
-
+    r1.tail--;
 
     // r2 = q * mod % B^(k + 1)
-    r2 = q * mod;
-    for (int i = 0; i < modLen + 1; ++i) {
-        r2.head[i] = head[i];
+    Big tmp{q.getLength() + modLen + 1};
+    tmp = q * mod;
+
+    r2.tail = r2.head;
+    for (int i = 0; (i < modLen + 1) && (i < tmp.getLength()); ++i) {
+        r2.head[i] = tmp.head[i];
+        r2.tail++;
     }
-    r2.tail = r2.head + modLen + 1; // ???????
+    r2.tail--;
 
-    res  = r1 - r2;
+
+    Big res{modLen + 2};
     if(r1 < r2) {
-        // one_at_k_plus_1 = B^(k + 1)
-        Big one_at_k_plus_1{modLen + 2};
-
+        // res = B^(k + 1)
         for (int i = 0; i < modLen + 1; i++) {
             res.head[i] = 0;
         }
         res.head[modLen + 1] = 1;
-        res.tail = res.head + modLen;
+        res.tail = res.head + modLen + 1;
 
-        res = res + one_at_k_plus_1;
+        res = res + r1;
+        res = res - r2;
+    } else {
+        res = r1 - r2;
     }
 
     while(res >= mod) {
         res = res - mod;
     }
+
     return res;
 }
-
-/*
- Big BurretReduction(Big &x, Big &mod, Big &z)
-{
-    Big q, r1, r2, r_dash, glass;
-
-    if (x < mod) {
-        return x;
-    }
-
-    int k = mod.GetLength();
-
-    r1.Resize(k + 1);
-    r2.Resize(k + 1);
-    q.Resize(x.GetLength() * 2 * k + 1);
-
-    // q = x/bk_1
-    int i, j;
-    for (i = k - 1, j = 0; i < x.GetLength(); i++, j++) {
-        q.al[j] = x.al[i];
-    }
-    q.ar = q.ar + x.GetLength() - k;
-
-    glass = q * z;
-
-    //  q = q / bk1;
-    for (i = k + 1, j = 0; i < glass.GetLength(); i++, j++) {
-        q.al[j] = glass.al[i];
-    }
-    q.ar = q.al + glass.GetLength() - (k + 2);
-
-    // r1 = x % bk1;
-    r1.ar = r1.al;
-    for (i = 0; i < k + 1 && i < x.GetLength(); i++) {
-        r1.al[i] = x.al[i];
-        r1.ar++;
-    }
-    r1.ar--;
-
-    glass = q * mod;
-
-    // r2 = glass % bk1;
-    r2.ar = r2.al;
-    for (i = 0; i < k + 1 && i < glass.GetLength(); i++) {
-        r2.al[i] = glass.al[i];
-        r2.ar++;
-    }
-    r2.ar--;
-
-    if (r1 >= r2) {
-        r_dash = r1 - r2;
-    } else {
-        r_dash.al[k + 1] = 1;
-        for (int i = r_dash.GetLength(); i < k + 1; i++) {
-            r_dash.al[i] = 0;
-        }
-        r_dash.ar = r_dash.al + k + 1;
-        r_dash = r_dash - r2;
-    }
-
-    while (r_dash >= mod) {
-        r_dash = r_dash - mod;
-    }
-    return r_dash;
-}
- */
 
 void Big::pow(Big &degree, Big &mod)
 {
@@ -728,7 +667,7 @@ Big Big::operator-(Big& rhs)
         }
     }
 
-    for (i; i < getLength(); i++)
+    for (; i < getLength(); i++)
     {
         result.tail++;
         tmp0 = carry;
