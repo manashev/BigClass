@@ -1,9 +1,10 @@
 #pragma once
 #include <iostream>
-#include <cstring>
+#include <string>
 
 typedef unsigned int base;
 typedef unsigned long long d_base;
+static const int bitsInBlock = sizeof(base) * 8;
 
 typedef int BigError;
 namespace BigErrors {
@@ -28,28 +29,40 @@ public:
     Big();
     Big(int capacity);
     Big(const Big &rhs);
+    explicit Big(std::string hexNum);
     ~Big();
 
     Big& operator =(const Big &rhs);
     Big& operator =(int rhs);
 
-
     int getCapacity() const;
     int getLength() const;
-    void rand(int bound);
     void compress();
     void shiftLeft(int amount);
+    Big shiftRight(int amount);
 
+    bool isPrime(int reliability);
+    void randBits(int bits);
+    void randBlocks(int blocks);
+    friend Big generatePrime(int bit, int reliability);
 
     friend int compare(const Big &lhs, const Big &rhs);
-    friend int compareWithZero(const Big &rhs);
-    friend bool operator>(Big &lhs, Big &rhs);
-    friend bool operator<(Big &lhs, Big &rhs);
-    friend bool operator>=(Big &lhs, Big &rhs);
-    friend bool operator<=(Big &lhs, Big &rhs);
-    friend bool operator==(Big &lhs, Big &rhs);
-    friend bool operator!=(Big &lhs, Big &rhs);
+    bool isZero();
+    bool isEven();
 
+    bool operator>(Big &rhs);
+    bool operator<(Big &rhs);
+    bool operator>=(Big &rhs);
+    bool operator<=(Big &rhs);
+    bool operator==(Big &rhs);
+    bool operator!=(Big &rhs);
+
+    bool operator>(base rhs);
+    bool operator<(base rhs);
+    bool operator>=(base rhs);
+    bool operator<=(base rhs);
+    bool operator==(base rhs);
+    bool operator!=(base rhs);
 
     Big operator+(Big &rhs);
     Big operator-(Big &rhs);
@@ -57,7 +70,8 @@ public:
     Big operator/(Big &rhs);
     Big operator%(Big &rhs);
 
-
+    Big pow(Big &degree, Big &mod);
+    Big pow(Big &degree, Big &mod, Big &barrettNum);
     Big mulBase(base rhs);
     friend Big mulByKaratsuba(Big &lhs, Big &rhs);
 
@@ -65,9 +79,6 @@ public:
     friend Big div(Big &e, Big &c, Big &remainder);
     Big moduloByBarrett(Big &mod, Big &barretNum);
     friend Big getBarrettNum(Big &mod);
-
-    void pow(Big &degree, Big &mod);
-
 
     friend std::istream& operator >> (std::istream &in, Big &rhs);
     friend std::ostream& operator << (std::ostream &out, Big &rhs);
@@ -82,3 +93,4 @@ private:
 
 Big mulByKaratsuba(Big &lhs, Big &rhs);
 Big getBarrettNum(Big &mod);
+Big generatePrime(int bit, int reliability);

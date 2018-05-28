@@ -1,5 +1,9 @@
 #include "big.h"
 
+using std::cout;
+using std::cin;
+using std::endl;
+
 using namespace BigErrors;
 
 Big::Big()
@@ -26,6 +30,49 @@ Big::Big(const Big &rhs)
     tail = head;
     for (int i = 0; i < length; i++) {
         head[i] = rhs.head[i];
+        tail++;
+    }
+    tail--;
+}
+
+Big::Big(std::string hexNum)
+{
+    int block = sizeof(base) * 2;//количество цифр F в числе
+    base tmp0, tmp1;
+    int index;
+    int string_length = hexNum.length();
+    int n = (string_length) / block + !!((string_length) % (block));
+
+    head = new base[n];
+    tail = head;
+    alloc= head + n - 1;
+
+    for(int k = 0; k < n; k++)
+    {
+        tmp0 = 0;
+        tmp1 = 0;
+        for(int i = 0; i < block; i++)
+        {
+            index = string_length - k * block - i -1;
+            if(index < 0)
+                break;
+            char symbol = hexNum[index];
+            if (symbol >= '0' && symbol <= '9')
+            {
+                tmp1 = symbol - 48;
+            } else if (symbol >= 'a' && symbol <= 'f')
+            {
+                tmp1 = symbol - 87;  // 10 + symbol - 97;
+            } else if (symbol >= 'A' && symbol <= 'F')
+            {
+                tmp1 = symbol - 55;  // symbol + 10 - 65
+            } else
+            {
+                throw INCORRECT_SYMBOL;
+            }
+            tmp0 = tmp0 | (tmp1 << 4 * i);
+        }
+        head[k] = tmp0;
         tail++;
     }
     tail--;
@@ -90,15 +137,15 @@ int Big::getLength() const
     return tail - head +1;
 }
 
-void Big::rand(int bound)
+void Big::randBlocks(int blocks)
 {
-    if(getCapacity() <  bound)
+    if(getCapacity() <  blocks)
     {
-        resize(bound + 1);
+        resize(blocks + 1);
     }
     tail = head;
     alloc = head + getCapacity() -1;
-    for (int i = 0; i < bound; i++)
+    for (int i = 0; i < blocks; i++)
     {
         head[i] = std::rand();
         tail++;
@@ -145,11 +192,11 @@ int compare(const Big &lhs, const Big &rhs)
     return 0;
 }
 
-int compareWithZero(const Big &rhs)
+bool Big::isZero()
 {
-    for (int i = rhs.getLength() - 1; 0 <= i; i--)
+    for (int i = getLength() - 1; 0 <= i; i--)
     {
-        if (rhs.head[i] != 0)
+        if (head[i] != 0)
         {
             return false;
         }
@@ -157,56 +204,72 @@ int compareWithZero(const Big &rhs)
     return true;
 }
 
-bool operator>(Big &lhs, Big &rhs)
+bool Big::isEven()
 {
-    if (compare(lhs, rhs) == 1) {
-        return true;
-    }
-    return false;
+    return !(head[0] & 1);
 }
 
-bool operator<(Big &lhs, Big &rhs)
+bool Big::operator>(Big &rhs)
 {
-    if (compare(lhs, rhs) == -1) {
-        return true;
-    }
-    return false;
+    return (compare(*this, rhs) == 1);
 }
 
-bool operator>=(Big &lhs, Big &rhs)
+bool Big::operator<(Big &rhs)
 {
-    int result = compare(lhs, rhs);
-    if ((result == 1) || (result == 0)) {
-        return true;
-    }
-    return false;
+    return(compare(*this, rhs) == -1);
 }
 
-bool operator<=(Big &lhs, Big &rhs)
+bool Big::operator>=(Big &rhs)
 {
-    int result = compare(lhs, rhs);
-    if ((result == -1) || (result) == 0) {
-        return true;
-    }
-    return false;
+    int result = compare(*this, rhs);
+    return ((result == 1) || (result == 0));
 }
 
-bool operator==(Big &lhs, Big &rhs)
+bool Big::operator<=(Big &rhs)
 {
-    if(compare(lhs, rhs) == 0)
-    {
-        return true;
-    }
-    return false;
+    int result = compare(*this, rhs);
+    return ((result == -1) || (result) == 0);
 }
 
-bool operator!=(Big &lhs, Big &rhs)
+bool Big::operator==(Big &rhs)
 {
-    if(compare(lhs, rhs) != 0)
-    {
-        return true;
-    }
-    return false;
+    return (compare(*this, rhs) == 0);
+}
+
+bool Big::operator!=(Big &rhs)
+{
+    return (compare(*this, rhs) != 0);
+}
+
+
+bool Big::operator<(base rhs)
+{
+    return ((head[0] < rhs) && (head == tail));
+}
+
+bool Big::operator>(base rhs)
+{
+    return !(head[0] < rhs) && (*this != rhs);
+}
+
+bool Big::operator<=(base rhs)
+{
+    return !(*this > rhs);
+}
+
+bool Big::operator>=(base rhs)
+{
+    return !(*this < rhs);
+}
+
+bool Big::operator==(base rhs)
+{
+    return ((head[0] == rhs) && (head == tail));
+}
+
+bool Big::operator!=(base rhs)
+{
+    return !(*this == rhs);
 }
 
 Big Big::mulBase(base rhs)
@@ -292,7 +355,7 @@ Big div(Big &e, Big &c, Big &remainder)
 
     int j = 0, n = b.getLength(), m = a.getLength() - n, flag;
 
-    if(compareWithZero(e))
+    if(e.isZero())
     {
         result.tail = result.head + 1;
         result.head[0] = 0;
@@ -451,6 +514,7 @@ Big getBarrettNum(Big &mod)
 
 Big Big::moduloByBarrett(Big &mod, Big &barrettNum)
 {
+    //Todo: добавить ограничение на длину в 2 раза (взять из теста)
     if (*this < mod) {
         return *this;
     }
@@ -498,7 +562,7 @@ Big Big::moduloByBarrett(Big &mod, Big &barrettNum)
 
 
     Big res{modLen + 2};
-    if(r1 < r2) {
+    if (r1 < r2) {
         // res = B^(k + 1)
         for (int i = 0; i < modLen + 1; i++) {
             res.head[i] = 0;
@@ -512,16 +576,21 @@ Big Big::moduloByBarrett(Big &mod, Big &barrettNum)
         res = r1 - r2;
     }
 
-    while(res >= mod) {
+    while (res >= mod) {
         res = res - mod;
     }
 
     return res;
 }
 
-void Big::pow(Big &degree, Big &mod)
+Big Big::pow(Big &degree, Big &mod)
 {
-//    Big z{(degree.head[0] & 1)? (*this) : (static_cast<base>(1))};
+    Big barrettNum{getBarrettNum(mod)};
+    return this->pow(degree, mod, barrettNum);
+}
+
+Big Big::pow(Big &degree, Big &mod, Big &barrettNum)
+{
     Big q{*this};
     Big z;
     if (degree.head[0] & 1) {
@@ -530,22 +599,20 @@ void Big::pow(Big &degree, Big &mod)
         z = static_cast<base>(1);
     };
 
-    int bits = sizeof(base) * 8;
-
     auto degreeLen = degree.getLength();
     int j = 1;
     for(int i = 0; i < degreeLen; ++i) {
-        for(; j < bits; ++j) {
+        for(; j < bitsInBlock; ++j) {
             q = q * q;
             q = q % mod;
             if (degree.head[i] & (1 << j)) {
                 z = z * q;
-                z = z % mod;
+                z = z.moduloByBarrett(mod, barrettNum);
             }
         }
         j = 0;
     }
-    *this = z;
+    return z;
 }
 
 Big Big::operator+(Big &rhs)
@@ -920,3 +987,110 @@ void Big::shiftLeft(int amount)
     }
 }
 
+Big Big::shiftRight(int amount)
+{
+    Big result{*this};
+    int len = getLength();
+
+    for(int i = 0; i < len - 1; i++)
+    {
+        result.head[i] = (head[i+1] << (bitsInBlock - amount)) | (head[i] >> amount);
+    }
+
+    result.head[len - 1] >>= amount;
+    result.compress();
+
+    return result;
+}
+
+void Big::randBits(int bits)
+{
+    int blockN = bits / bitsInBlock;
+    int bitN = bits % bitsInBlock;
+
+    if(bitN) {
+        ++blockN;
+    }
+    randBlocks(blockN);
+    if(bitN) {
+        head[blockN - 1] &= (1ull << bitN) - 1;
+        head[blockN - 1] |= (1 << (bitN - 1));
+    } else {
+        head[blockN - 1] |= 1 << (bitsInBlock - 1);
+    }
+}
+
+bool Big::isPrime(int reliability)
+{
+    // Проверка особых случаев
+    if (*this == 0 || *this == 1 || isEven()) {
+        return false;
+    }
+    if (*this == 2 || *this == 3) {
+        return true;
+    }
+
+    // this = (2^degree)*exponent + 1
+    Big one; //Todo: починить остальные конструкторы (только такой вариант рабочий)
+    one = static_cast<base>(1);
+    Big minusOne{*this - one};
+
+    // Находим degree
+    int degree{0}, block{0}, bit{0};
+    while (!minusOne.head[block]) {
+        degree += bitsInBlock;
+        ++block;
+    }
+    while (!(minusOne.head[block] & (1 << bit))) {
+        ++degree;
+        ++bit;
+    }
+
+    // Находим exponent
+    Big exponent{minusOne.shiftRight(degree)};
+
+    Big random;
+    Big barretNum{getBarrettNum(*this)};
+    for (int i = 0; i < reliability; ++i) {
+        // Генерируем random: 2 <= random <= num-2
+        random.randBlocks(getLength());
+        random = random.moduloByBarrett(*this, barretNum);
+        if (random < 3) {
+            --i;
+            continue;
+        }
+        random = random - one;
+
+        Big check{random.pow(exponent, *this, barretNum)};
+        if (check == 1 || check == minusOne) {
+            continue;
+        }
+
+        for (int j = 1; j < degree; ++j) {
+            if (check == minusOne) {
+                break;
+            }
+            check = mulByKaratsuba(check, check);
+            check = check.moduloByBarrett(*this, barretNum);
+
+            if (check == 1) {
+                return false;
+            }
+        }
+        if (check != minusOne) {
+            return false;
+        }
+    }
+    return true;
+}
+
+Big generatePrime(int bits, int reliability)
+{
+    Big random;
+    while(true) {
+        random.randBits(bits);
+        if(random.isPrime(reliability)) {
+            return random;
+        }
+    }
+}

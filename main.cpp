@@ -4,6 +4,7 @@
 #include <utility>
 
 using std::cout;
+using std::cin;
 using std::endl;
 
 /*
@@ -29,8 +30,8 @@ bool testBig(int count, int sizeRange, bool isFixedSize)
             n = 1 + rand() % sizeRange;
             m = 1 + rand() % sizeRange;
         }
-        A.rand(n);
-        B.rand(m);
+        A.randBlocks(n);
+        B.randBlocks(m);
 
 
         C = A / B;
@@ -87,8 +88,8 @@ bool testKaratsuba(int count, int sizeRange, bool isFixedSize)
             m = 1 + rand() % sizeRange;
         }
 
-        num1.rand(n);
-        num2.rand(m);
+        num1.randBlocks(n);
+        num2.randBlocks(m);
         auto begin = std::chrono::high_resolution_clock::now();
         resBasic = num1 * num2;
         auto end = std::chrono::high_resolution_clock::now();
@@ -139,16 +140,11 @@ bool testPow(int count, int sizeRange, bool isFixedSize)
             m = 1 + rand() % (sizeRange / 10);
         }
         m = 1;
-        x.rand(n);
-        y.rand(m);
-        mod.rand(sizeRange);
+        x.randBlocks(n);
+        y.randBlocks(m);
+        mod.randBlocks(sizeRange);
 
-        res = x;
-
-
-        res.pow(y, mod);
-
-
+        res = x.pow(y, mod);
 
         if (res != res ) {
             cout << endl;
@@ -176,24 +172,19 @@ bool testBarrett(int count, int sizeRange, bool isFixedSize)
     cout << "----------------------------------------------------------------------------" << endl;
     cout << "Начато тестирование moduloByBarrett()" << endl;
     Big x, mod, barrettNum, resBarrett, resBasic;
-    int n, m;
+    int xLength, modLength;
     std::chrono::duration<double> barrettTime{0};
     std::chrono::duration<double> basicTime{0};
 
     for(int i = 1; i <= count; ++i) {
         if (isFixedSize) {
-            n = m = sizeRange;
+            modLength = sizeRange;
         } else {
-            n = 1 + rand() % sizeRange;
-            m = 2 + rand() % sizeRange;
+            modLength = 1 + rand() % sizeRange;
         }
-        if(n < m) {
-            int buf = n;
-            n = m;
-            m = buf;
-        }
-        x.rand(n);
-        mod.rand(m);
+        mod.randBlocks(modLength);
+        xLength = 1 + rand() % (2 * mod.getLength());
+        x.randBlocks(xLength);
 
         barrettNum = getBarrettNum(mod);
 
@@ -235,13 +226,37 @@ bool testBarrett(int count, int sizeRange, bool isFixedSize)
 
 int main()
 {
-    int testCount = 10;
+    int testCount = 1000;
     int numSizeRange = 10000;
     bool isFixedSize = true;
     srand(time(NULL));
 
+// Генерация простых с разным количеством бит
+    for(int i = 990; i < 1020; ++i) {
+        Big prime{generatePrime(i, 500)};
+        cout << "bit: " << i << endl;
+        cout << prime << endl << endl;
+    }
+
+// Генерация простого числа
+//    Big prime{generatePrime(1001, 500)};
+//        cout << prime << endl;
+
+//  Проверка на известных значениях
+//    Big b{"db7"};
+//    Big c{"1b02761f9c6b100f64e1b27a78330195da1f6902cdeaf4c71c71c7"};
+//    Big d{"1b02761f9c6b100f64e1b27a78330195da1f6902cdeaf4c71c71c61b02761f9c6b100f64e1b27a78330195da1f6902cdeaf4c71c71c6"};
+//
+//    cout << "b: " << b << endl;
+//    cout << "c: " << c << endl;
+//    cout << "d: " << d << endl;
+//
+//    cout << "b.isPrime: " << b.isPrime(500) << endl;
+//    cout << "c.isPrime: " << c.isPrime(500) << endl;
+//    cout << "d.isPrime: " << d.isPrime(500) << endl;
+
 //    testBig(testCount, numSizeRange, isFixedSize);
 //    testKaratsuba(testCount, numSizeRange, isFixedSize);
 //    testPow(testCount, numSizeRange, isFixedSize);
-    testBarrett(testCount, numSizeRange, isFixedSize);
+//    testBarrett(testCount, numSizeRange, isFixedSize);
 }
